@@ -1,0 +1,20 @@
+[build]
+  command = "echo 'No build required for Expo Web development mode'"
+  publish = "web-build"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    
+# Note: For production deployment, you'll need to set up a proper build process
