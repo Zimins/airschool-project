@@ -19,6 +19,30 @@ This is an AirSchool React Native for Web prototype application that connects as
 - No linting configuration exists yet
 - TypeScript is configured with strict mode
 
+### Building and Deployment
+
+#### EAS (Expo Application Services) Deployment
+The project is configured for EAS with project ID: `f565a3ab-2f02-4143-ae06-9410a6d0bf57`
+
+**Prerequisites:**
+- Install EAS CLI: `npm install -g eas-cli`
+- Login to Expo account: `eas login`
+
+**Build Commands:**
+- `eas build --platform web` - Build for web deployment
+- `eas build --platform ios` - Build for iOS (requires Apple Developer account)
+- `eas build --platform android` - Build for Android
+- `eas build --platform all` - Build for all platforms
+
+**Update Deployment:**
+- `eas update` - Deploy updates to existing builds
+- `eas update --branch preview` - Deploy to preview branch
+- `eas update --branch production` - Deploy to production branch
+
+**Local Build:**
+- `npm run build:web` - Generate static web files in `web-build/` directory
+- `npx serve web-build` - Test production build locally
+
 ## Architecture and Structure
 
 ### Directory Structure
