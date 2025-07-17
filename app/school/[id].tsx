@@ -11,29 +11,24 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { mockFlightSchools, mockReviews, getRatingDistribution } from '../data/mockData';
-import { theme } from '../styles/theme';
-import ReviewCard from '../components/ReviewCard';
-import ReviewModal from '../components/ReviewModal';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'FlightSchoolDetail'>;
+import { mockFlightSchools, mockReviews, getRatingDistribution } from '../../src/data/mockData';
+import { theme } from '../../src/styles/theme';
+import ReviewCard from '../../src/components/ReviewCard';
+import ReviewModal from '../../src/components/ReviewModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 const FlightSchoolDetailScreen = () => {
-  const route = useRoute<Props['route']>();
-  const navigation = useNavigation<Props['navigation']>();
-  const { schoolId } = route.params;
+  const { id: schoolId } = useLocalSearchParams();
+  const router = useRouter();
   
   const school = mockFlightSchools.find(s => s.id === schoolId);
   const reviews = mockReviews.filter(r => r.schoolId === schoolId);
-  const ratingDistribution = getRatingDistribution(schoolId);
+  const ratingDistribution = getRatingDistribution(schoolId as string);
   
-  const [activeTab, setActiveTab] = useState('programs');
+  const [activeTab, setActiveTab] = useState('overview');
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
@@ -64,15 +59,33 @@ const FlightSchoolDetailScreen = () => {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'overview':
+        return (
+          <View style={styles.tabContent}>
+            <Text style={styles.sectionTitle}>Introduction</Text>
+            <Text style={styles.description}>{school.description}</Text>
+            
+            <Text style={styles.sectionTitle}>Features</Text>
+            <View style={styles.featuresContainer}>
+              {school.features.map((feature, index) => (
+                <View key={index} style={styles.featureItem}>
+                  <Text style={styles.featureBullet}>•</Text>
+                  <Text style={styles.featureText}>{feature}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        );
       
       case 'programs':
         return (
           <View style={styles.tabContent}>
-            <Text style={styles.sectionTitle}>Available Programs</Text>
+            <Text style={styles.sectionTitle}>Programs Offered</Text>
             {school.programs.map((program) => (
               <View key={program.id} style={styles.programCard}>
                 <Text style={styles.programName}>{program.name}</Text>
                 <Text style={styles.programDuration}>Duration: {program.duration}</Text>
+                <Text style={styles.programPrice}>{program.price}</Text>
                 <Text style={styles.programDescription}>{program.description}</Text>
               </View>
             ))}
@@ -82,7 +95,7 @@ const FlightSchoolDetailScreen = () => {
       case 'facilities':
         return (
           <View style={styles.tabContent}>
-            <Text style={styles.sectionTitle}>Facility Gallery</Text>
+            <Text style={styles.sectionTitle}>Facilities Gallery</Text>
             <FlatList
               horizontal
               data={school.gallery}
@@ -192,7 +205,7 @@ const FlightSchoolDetailScreen = () => {
         {/* Back Button */}
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
@@ -202,6 +215,7 @@ const FlightSchoolDetailScreen = () => {
       <View style={styles.tabContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {[
+            { id: 'overview', label: 'Overview' },
             { id: 'programs', label: 'Programs' },
             { id: 'facilities', label: 'Facilities' },
             { id: 'location', label: 'Location' },
@@ -237,7 +251,7 @@ const FlightSchoolDetailScreen = () => {
       <ReviewModal
         visible={reviewModalVisible}
         onClose={() => setReviewModalVisible(false)}
-        schoolId={schoolId}
+        schoolId={schoolId as string}
         schoolName={school.name}
       />
     </ScrollView>
@@ -371,6 +385,12 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
+  },
+  programPrice: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.sm,
   },
   programDescription: {
     fontSize: theme.fontSize.base,

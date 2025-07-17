@@ -11,21 +11,25 @@ import {
   Alert,
   StatusBar,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { theme } from '../styles/theme';
+import { theme } from '../src/styles/theme';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
-
-const LoginScreen = () => {
-  const navigation = useNavigation<NavigationProp>();
+const SignupScreen = () => {
+  const router = useRouter();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
 
-  const handleLogin = () => {
+  const handleSignup = () => {
+    if (!name.trim()) {
+      Alert.alert('Please enter your name');
+      return;
+    }
     if (!email.trim()) {
       Alert.alert('Please enter your email');
       return;
@@ -34,15 +38,19 @@ const LoginScreen = () => {
       Alert.alert('Please enter your password');
       return;
     }
+    if (password !== confirmPassword) {
+      Alert.alert('Passwords do not match');
+      return;
+    }
+    if (!agreeToTerms) {
+      Alert.alert('Please agree to the terms and conditions');
+      return;
+    }
 
-    // In a real app, this would authenticate with backend
-    Alert.alert('Login successful!', 'Moving to home screen.', [
-      { text: 'OK', onPress: () => navigation.navigate('Home') },
+    // In a real app, this would create account with backend
+    Alert.alert('Sign up successful!', 'You will be redirected to the login screen.', [
+      { text: 'OK', onPress: () => router.replace('/login') },
     ]);
-  };
-
-  const handleSocialLogin = (provider: string) => {
-    Alert.alert(`${provider} Login`, 'Not supported in prototype.');
   };
 
   return (
@@ -58,19 +66,30 @@ const LoginScreen = () => {
         {/* Back Button */}
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         
         <View style={styles.header}>
-          <Text style={styles.title}>Welcome!</Text>
+          <Text style={styles.title}>Sign Up</Text>
           <Text style={styles.subtitle}>
-            Sign in with your AirSchool account
+            Start your flying dreams with AirSchool
           </Text>
         </View>
 
         <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your name"
+              value={name}
+              onChangeText={setName}
+              placeholderTextColor={theme.colors.textSecondary}
+            />
+          </View>
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -106,40 +125,49 @@ const LoginScreen = () => {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Sign In</Text>
-          </TouchableOpacity>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.divider} />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Confirm Password</Text>
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Enter your password again"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                placeholderTextColor={theme.colors.textSecondary}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                <Text style={styles.eyeIcon}>
+                  {showConfirmPassword ? '👁' : '👁‍🗨'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <View style={styles.socialButtons}>
-            <TouchableOpacity
-              style={[styles.socialButton, styles.googleButton]}
-              onPress={() => handleSocialLogin('Google')}
-            >
-              <Text style={styles.socialButtonText}>🔵 Sign in with Google</Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.termsContainer}
+            onPress={() => setAgreeToTerms(!agreeToTerms)}
+          >
+            <View style={styles.checkbox}>
+              {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={styles.termsText}>
+              I agree to the <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+              <Text style={styles.termsLink}>Privacy Policy</Text>
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.socialButton, styles.facebookButton]}
-              onPress={() => handleSocialLogin('Facebook')}
-            >
-              <Text style={styles.socialButtonText}>📘 Sign in with Facebook</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
+            <Text style={styles.signupButtonText}>Sign Up</Text>
+          </TouchableOpacity>
 
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-              <Text style={styles.signupLink}>Sign Up</Text>
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.push('/login')}>
+              <Text style={styles.loginLink}>Log In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -186,6 +214,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: theme.fontSize.base,
     color: theme.colors.textSecondary,
+    textAlign: 'center',
   },
   form: {
     flex: 1,
@@ -222,77 +251,61 @@ const styles = StyleSheet.create({
   eyeIcon: {
     fontSize: 24,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: theme.spacing.lg,
   },
-  forgotPasswordText: {
-    color: theme.colors.primary,
-    fontSize: theme.fontSize.sm,
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.sm,
+    marginRight: theme.spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  loginButton: {
+  checkmark: {
+    color: theme.colors.primary,
+    fontSize: theme.fontSize.base,
+    fontWeight: 'bold',
+  },
+  termsText: {
+    flex: 1,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text,
+  },
+  termsLink: {
+    color: theme.colors.primary,
+    textDecorationLine: 'underline',
+  },
+  signupButton: {
     backgroundColor: theme.colors.primary,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
   },
-  loginButtonText: {
+  signupButtonText: {
     color: 'white',
     fontSize: theme.fontSize.base,
     fontWeight: 'bold',
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: theme.colors.border,
-  },
-  dividerText: {
-    marginHorizontal: theme.spacing.md,
-    color: theme.colors.textSecondary,
-    fontSize: theme.fontSize.sm,
-  },
-  socialButtons: {
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
-  },
-  socialButton: {
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  googleButton: {
-    backgroundColor: 'white',
-  },
-  facebookButton: {
-    backgroundColor: 'white',
-  },
-  socialButtonText: {
-    fontSize: theme.fontSize.base,
-    fontWeight: '600',
-    color: theme.colors.text,
-  },
-  signupContainer: {
+  loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  signupText: {
+  loginText: {
     color: theme.colors.textSecondary,
     fontSize: theme.fontSize.base,
   },
-  signupLink: {
+  loginLink: {
     color: theme.colors.primary,
     fontSize: theme.fontSize.base,
     fontWeight: '600',
   },
 });
 
-export default LoginScreen;
+export default SignupScreen;

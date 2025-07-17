@@ -18,7 +18,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('ko-KR', {
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -43,7 +43,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.helpfulButton}>
-          <Text style={styles.helpfulText}>도움이 됨 ({review.helpful})</Text>
+          <Text style={styles.helpfulText}>Helpful ({review.helpful})</Text>
         </TouchableOpacity>
       </View>
     </View>

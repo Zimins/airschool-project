@@ -30,18 +30,20 @@ const FlightSchoolCard: React.FC<FlightSchoolCardProps> = ({ school, onPress }) 
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.95}>
-      <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: school.image }}
-          style={styles.image}
-          resizeMode="cover"
-        />
-        <View style={styles.imageOverlay}>
-          <View style={styles.priceTag}>
-            <Text style={styles.priceText}>{school.priceRange}</Text>
-          </View>
+      {school.image ? (
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: school.image }}
+            style={styles.image}
+            resizeMode="cover"
+          />
         </View>
-      </View>
+      ) : (
+        <View style={[styles.imageContainer, styles.noImageContainer]}>
+          <Ionicons name="airplane" size={48} color={theme.colors.textSecondary} />
+          <Text style={styles.noImageText}>No Image Available</Text>
+        </View>
+      )}
       
       <View style={styles.content}>
         <View style={styles.header}>
@@ -101,27 +103,15 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  imageOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.3) 100%)',
+  noImageContainer: {
+    backgroundColor: theme.colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  priceTag: {
-    position: 'absolute',
-    top: theme.spacing.md,
-    right: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
-  },
-  priceText: {
-    color: 'white',
+  noImageText: {
+    marginTop: theme.spacing.sm,
     fontSize: theme.fontSize.sm,
-    fontWeight: 'bold',
+    color: theme.colors.textSecondary,
   },
   content: {
     padding: theme.spacing.lg,

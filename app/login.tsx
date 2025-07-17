@@ -11,16 +11,12 @@ import {
   Alert,
   StatusBar,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { theme } from '../styles/theme';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
+import { theme } from '../src/styles/theme';
 
 const LoginScreen = () => {
-  const navigation = useNavigation<NavigationProp>();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,8 +32,8 @@ const LoginScreen = () => {
     }
 
     // In a real app, this would authenticate with backend
-    Alert.alert('Login successful!', 'Moving to home screen.', [
-      { text: 'OK', onPress: () => navigation.navigate('Home') },
+    Alert.alert('Login successful!', 'You will be redirected to the home screen.', [
+      { text: 'OK', onPress: () => router.replace('/') },
     ]);
   };
 
@@ -58,7 +54,7 @@ const LoginScreen = () => {
         {/* Back Button */}
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
@@ -66,7 +62,7 @@ const LoginScreen = () => {
         <View style={styles.header}>
           <Text style={styles.title}>Welcome!</Text>
           <Text style={styles.subtitle}>
-            Sign in with your AirSchool account
+            Log in to your AirSchool account
           </Text>
         </View>
 
@@ -107,16 +103,16 @@ const LoginScreen = () => {
           </View>
 
           <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Sign In</Text>
+            <Text style={styles.loginButtonText}>Log In</Text>
           </TouchableOpacity>
 
           <View style={styles.dividerContainer}>
             <View style={styles.divider} />
-            <Text style={styles.dividerText}>OR</Text>
+            <Text style={styles.dividerText}>or</Text>
             <View style={styles.divider} />
           </View>
 
@@ -125,20 +121,20 @@ const LoginScreen = () => {
               style={[styles.socialButton, styles.googleButton]}
               onPress={() => handleSocialLogin('Google')}
             >
-              <Text style={styles.socialButtonText}>🔵 Sign in with Google</Text>
+              <Text style={styles.socialButtonText}>🔵 Continue with Google</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.socialButton, styles.facebookButton]}
               onPress={() => handleSocialLogin('Facebook')}
             >
-              <Text style={styles.socialButtonText}>📘 Sign in with Facebook</Text>
+              <Text style={styles.socialButtonText}>📘 Continue with Facebook</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.signupContainer}>
             <Text style={styles.signupText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+            <TouchableOpacity onPress={() => router.push('/signup')}>
               <Text style={styles.signupLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>

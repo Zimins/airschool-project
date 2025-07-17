@@ -4,12 +4,16 @@ import HomeScreen from '../screens/HomeScreen';
 import FlightSchoolDetailScreen from '../screens/FlightSchoolDetailScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
+import CommunityBoardScreen from '../screens/CommunityBoardScreen';
+import StudyBoardScreen from '../screens/StudyBoardScreen';
 
 export type RootStackParamList = {
   Home: undefined;
   FlightSchoolDetail: { schoolId: string };
   Login: undefined;
   Signup: undefined;
+  CommunityBoard: undefined;
+  StudyBoard: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -29,17 +33,27 @@ const AppNavigator = () => {
       <Stack.Screen 
         name="FlightSchoolDetail" 
         component={FlightSchoolDetailScreen}
-        options={{ title: '비행 학교 상세' }}
+        options={{ title: 'Flight School Details' }}
       />
       <Stack.Screen 
         name="Login" 
         component={LoginScreen}
-        options={{ title: '로그인' }}
+        options={{ title: 'Login' }}
       />
       <Stack.Screen 
         name="Signup" 
         component={SignupScreen}
-        options={{ title: '회원가입' }}
+        options={{ title: 'Sign Up' }}
+      />
+      <Stack.Screen 
+        name="CommunityBoard" 
+        component={CommunityBoardScreen}
+        options={{ title: 'Community Board' }}
+      />
+      <Stack.Screen 
+        name="StudyBoard" 
+        component={StudyBoardScreen}
+        options={{ title: 'Study Board' }}
       />
     </Stack.Navigator>
   );

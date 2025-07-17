@@ -32,20 +32,20 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
 
   const handleSubmit = () => {
     if (rating === 0) {
-      Alert.alert('별점을 선택해주세요');
+      Alert.alert('Please select a rating');
       return;
     }
     if (!title.trim()) {
-      Alert.alert('제목을 입력해주세요');
+      Alert.alert('Please enter a title');
       return;
     }
     if (!content.trim()) {
-      Alert.alert('리뷰 내용을 입력해주세요');
+      Alert.alert('Please enter review content');
       return;
     }
 
     // In a real app, this would submit to the backend
-    Alert.alert('리뷰가 등록되었습니다!');
+    Alert.alert('Review submitted successfully!');
     resetForm();
     onClose();
   };
@@ -77,14 +77,14 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
         <View style={styles.modalContent}>
           <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.header}>
-              <Text style={styles.modalTitle}>{schoolName} 리뷰 작성</Text>
+              <Text style={styles.modalTitle}>Write Review for {schoolName}</Text>
               <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.ratingSection}>
-              <Text style={styles.ratingLabel}>평점을 선택해주세요</Text>
+              <Text style={styles.ratingLabel}>Please select your rating</Text>
               <View style={styles.starsContainer}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <TouchableOpacity
@@ -106,10 +106,10 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
             </View>
 
             <View style={styles.inputSection}>
-              <Text style={styles.inputLabel}>제목</Text>
+              <Text style={styles.inputLabel}>Title</Text>
               <TextInput
                 style={styles.titleInput}
-                placeholder="리뷰 제목을 입력하세요"
+                placeholder="Enter review title"
                 value={title}
                 onChangeText={setTitle}
                 placeholderTextColor={theme.colors.textSecondary}
@@ -117,10 +117,10 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
             </View>
 
             <View style={styles.inputSection}>
-              <Text style={styles.inputLabel}>리뷰 내용</Text>
+              <Text style={styles.inputLabel}>Review Content</Text>
               <TextInput
                 style={styles.contentInput}
-                placeholder="경험을 자세히 공유해주세요"
+                placeholder="Share your experience in detail"
                 value={content}
                 onChangeText={setContent}
                 multiline
@@ -135,14 +135,14 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                 style={[styles.button, styles.cancelButton]}
                 onPress={handleClose}
               >
-                <Text style={styles.cancelButtonText}>취소</Text>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
                 style={[styles.button, styles.submitButton]}
                 onPress={handleSubmit}
               >
-                <Text style={styles.submitButtonText}>제출</Text>
+                <Text style={styles.submitButtonText}>Submit</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

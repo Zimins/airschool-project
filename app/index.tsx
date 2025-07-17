@@ -13,17 +13,13 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { mockFlightSchools } from '../data/mockData';
-import { theme } from '../styles/theme';
-import FlightSchoolCard from '../components/FlightSchoolCard';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+import { useRouter } from 'expo-router';
+import { mockFlightSchools } from '../src/data/mockData';
+import { theme } from '../src/styles/theme';
+import FlightSchoolCard from '../src/components/FlightSchoolCard';
 
 const HomeScreen = () => {
-  const navigation = useNavigation<NavigationProp>();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [filteredSchools, setFilteredSchools] = useState(mockFlightSchools);
@@ -45,7 +41,7 @@ const HomeScreen = () => {
   }, [searchQuery]);
 
   const handleSchoolPress = (schoolId: string) => {
-    navigation.navigate('FlightSchoolDetail', { schoolId });
+    router.push(`/school/${schoolId}`);
   };
 
   const renderHeader = () => (
@@ -64,14 +60,14 @@ const HomeScreen = () => {
             </View>
             <TouchableOpacity
               style={styles.profileButton}
-              onPress={() => navigation.navigate('Login')}
+              onPress={() => router.push('/login')}
             >
               <Ionicons name="person-circle-outline" size={32} color="white" />
             </TouchableOpacity>
           </View>
           
           <Text style={styles.headerSubtitle}>
-            Find the perfect partner to realize your aviation dreams
+            Find the perfect partner to realize your flying dreams
           </Text>
         </View>
       </LinearGradient>
@@ -96,14 +92,14 @@ const HomeScreen = () => {
       <View style={styles.boardButtonsContainer}>
         <TouchableOpacity 
           style={styles.boardButton}
-          onPress={() => navigation.navigate('CommunityBoard' as any)}
+          onPress={() => router.push('/community')}
         >
           <Ionicons name="chatbubbles-outline" size={24} color={theme.colors.primary} />
           <Text style={styles.boardButtonText}>Community Board</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.boardButton}
-          onPress={() => navigation.navigate('StudyBoard' as any)}
+          onPress={() => router.push('/study')}
         >
           <Ionicons name="school-outline" size={24} color={theme.colors.secondary} />
           <Text style={styles.boardButtonText}>Study Board</Text>

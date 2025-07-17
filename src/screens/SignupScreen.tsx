@@ -31,29 +31,29 @@ const SignupScreen = () => {
 
   const handleSignup = () => {
     if (!name.trim()) {
-      Alert.alert('이름을 입력해주세요');
+      Alert.alert('Please enter your name');
       return;
     }
     if (!email.trim()) {
-      Alert.alert('이메일을 입력해주세요');
+      Alert.alert('Please enter your email');
       return;
     }
     if (!password.trim()) {
-      Alert.alert('비밀번호를 입력해주세요');
+      Alert.alert('Please enter your password');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('비밀번호가 일치하지 않습니다');
+      Alert.alert('Passwords do not match');
       return;
     }
     if (!agreeToTerms) {
-      Alert.alert('이용약관에 동의해주세요');
+      Alert.alert('Please agree to the terms and conditions');
       return;
     }
 
     // In a real app, this would create account with backend
-    Alert.alert('회원가입 성공!', '로그인 화면으로 이동합니다.', [
-      { text: '확인', onPress: () => navigation.navigate('Login') },
+    Alert.alert('Sign up successful!', 'Moving to login screen.', [
+      { text: 'OK', onPress: () => navigation.navigate('Login') },
     ]);
   };
 
@@ -76,18 +76,18 @@ const SignupScreen = () => {
         </TouchableOpacity>
         
         <View style={styles.header}>
-          <Text style={styles.title}>회원가입</Text>
+          <Text style={styles.title}>Sign Up</Text>
           <Text style={styles.subtitle}>
-            AirSchool과 함께 비행의 꿈을 시작하세요
+            Start your flight dream with AirSchool
           </Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>이름</Text>
+            <Text style={styles.label}>Name</Text>
             <TextInput
               style={styles.input}
-              placeholder="이름을 입력하세요"
+              placeholder="Enter your name"
               value={name}
               onChangeText={setName}
               placeholderTextColor={theme.colors.textSecondary}
@@ -95,10 +95,10 @@ const SignupScreen = () => {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>이메일</Text>
+            <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
-              placeholder="이메일을 입력하세요"
+              placeholder="Enter your email"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -108,11 +108,11 @@ const SignupScreen = () => {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>비밀번호</Text>
+            <Text style={styles.label}>Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
-                placeholder="비밀번호를 입력하세요"
+                placeholder="Enter your password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -130,11 +130,11 @@ const SignupScreen = () => {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>비밀번호 확인</Text>
+            <Text style={styles.label}>Confirm Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
-                placeholder="비밀번호를 다시 입력하세요"
+                placeholder="Re-enter your password"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirmPassword}
@@ -159,19 +159,19 @@ const SignupScreen = () => {
               {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
             </View>
             <Text style={styles.termsText}>
-              <Text style={styles.termsLink}>이용약관</Text> 및{' '}
-              <Text style={styles.termsLink}>개인정보처리방침</Text>에 동의합니다
+              I agree to the <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+              <Text style={styles.termsLink}>Privacy Policy</Text>
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
-            <Text style={styles.signupButtonText}>가입하기</Text>
+            <Text style={styles.signupButtonText}>Sign Up</Text>
           </TouchableOpacity>
 
           <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>이미 계정이 있으신가요? </Text>
+            <Text style={styles.loginText}>Already have an account? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>로그인</Text>
+              <Text style={styles.loginLink}>Sign In</Text>
             </TouchableOpacity>
           </View>
         </View>
