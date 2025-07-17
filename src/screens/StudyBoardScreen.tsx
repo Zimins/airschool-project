@@ -13,128 +13,140 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '../styles/theme';
 
-interface StudyGroup {
+interface StudyPost {
   id: string;
   title: string;
-  organizer: string;
-  type: string;
-  description: string;
-  location: string;
-  participants: number;
-  maxParticipants: number;
-  startDate: string;
-  schedule: string;
-  level: string;
+  author: string;
+  category: string;
+  content: string;
+  createdAt: string;
+  likes: number;
+  comments: number;
+  views: number;
+  attachments?: number;
 }
 
-const mockStudyGroups: StudyGroup[] = [
+const mockStudyPosts: StudyPost[] = [
   {
     id: '1',
-    title: 'PPL Written Test Study Group',
-    organizer: 'David Kim',
-    type: 'Written Test',
-    description: 'Weekly study sessions for PPL written test preparation',
-    location: 'Seoul',
-    participants: 5,
-    maxParticipants: 8,
-    startDate: '2024-04-01',
-    schedule: 'Every Saturday 2PM',
-    level: 'Beginner',
+    title: 'PPL Written Test Complete Study Guide',
+    author: 'David Kim',
+    category: 'Written Test',
+    content: 'Comprehensive study guide covering all topics for PPL written test. Includes practice questions and detailed explanations.',
+    createdAt: '2024-03-20',
+    likes: 89,
+    comments: 23,
+    views: 1234,
+    attachments: 3,
   },
   {
     id: '2',
-    title: 'Aviation English Practice',
-    organizer: 'Emma Park',
-    type: 'Language',
-    description: 'Practice aviation phraseology and radio communications',
-    location: 'Online',
-    participants: 12,
-    maxParticipants: 15,
-    startDate: '2024-03-25',
-    schedule: 'Tue & Thu 7PM',
-    level: 'Intermediate',
+    title: 'Aviation English Phraseology Handbook',
+    author: 'Emma Park',
+    category: 'Language',
+    content: 'Complete collection of standard aviation phraseology with Korean translations and pronunciation guides.',
+    createdAt: '2024-03-19',
+    likes: 67,
+    comments: 15,
+    views: 890,
+    attachments: 1,
   },
   {
     id: '3',
-    title: 'CPL Navigation Study',
-    organizer: 'Captain Jung',
-    type: 'Navigation',
-    description: 'Advanced navigation techniques for CPL students',
-    location: 'Busan',
-    participants: 3,
-    maxParticipants: 6,
-    startDate: '2024-04-10',
-    schedule: 'Weekends',
-    level: 'Advanced',
+    title: 'VFR Navigation Chart Reading Tutorial',
+    author: 'Captain Jung',
+    category: 'Navigation',
+    content: 'Step-by-step guide to reading VFR sectional charts. Includes symbol explanations and practical examples.',
+    createdAt: '2024-03-18',
+    likes: 56,
+    comments: 12,
+    views: 678,
+    attachments: 5,
   },
   {
     id: '4',
-    title: 'Weather & Meteorology',
-    organizer: 'Lisa Chen',
-    type: 'Weather',
-    description: 'Understanding weather patterns for safe flying',
-    location: 'Jeju',
-    participants: 7,
-    maxParticipants: 10,
-    startDate: '2024-03-30',
-    schedule: 'Mon & Wed 6PM',
-    level: 'All Levels',
+    title: 'Weather Patterns and Flight Planning',
+    author: 'Lisa Chen',
+    category: 'Weather',
+    content: 'Understanding weather systems for safe flight planning. Covers METAR/TAF interpretation and weather hazards.',
+    createdAt: '2024-03-17',
+    likes: 45,
+    comments: 8,
+    views: 567,
+    attachments: 2,
+  },
+  {
+    id: '5',
+    title: 'Aircraft Systems Study Notes - Cessna 172',
+    author: 'Mike Johnson',
+    category: 'Aircraft',
+    content: 'Detailed study notes on Cessna 172 systems including engine, electrical, hydraulic, and avionics.',
+    createdAt: '2024-03-16',
+    likes: 72,
+    comments: 19,
+    views: 923,
+    attachments: 4,
   },
 ];
 
 const StudyBoardScreen = () => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const types = ['All', 'Written Test', 'Language', 'Navigation', 'Weather'];
+  const categories = ['All', 'Written Test', 'Language', 'Navigation', 'Weather', 'Aircraft'];
 
-  const filteredGroups = mockStudyGroups.filter(group => {
-    const matchesSearch = group.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         group.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = selectedType === 'All' || group.type === selectedType;
-    return matchesSearch && matchesType;
+  const filteredPosts = mockStudyPosts.filter(post => {
+    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         post.content.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || post.category === selectedCategory;
+    return matchesSearch && matchesCategory;
   });
 
-  const renderStudyGroup = ({ item }: { item: StudyGroup }) => (
-    <TouchableOpacity style={styles.groupCard}>
-      <View style={styles.groupHeader}>
-        <View style={styles.typeContainer}>
-          <Text style={styles.groupType}>{item.type}</Text>
-          <Text style={styles.groupLevel}>{item.level}</Text>
-        </View>
-        <View style={styles.participantInfo}>
-          <Ionicons name="people" size={16} color={theme.colors.textSecondary} />
-          <Text style={styles.participantText}>
-            {item.participants}/{item.maxParticipants}
-          </Text>
+  const renderPost = ({ item }: { item: StudyPost }) => (
+    <TouchableOpacity 
+      style={styles.postCard}
+      onPress={() => router.push({
+        pathname: '/study-post/[id]',
+        params: { id: item.id }
+      })}
+    >
+      <View style={styles.postHeader}>
+        <Text style={styles.postCategory}>{item.category}</Text>
+        <Text style={styles.postDate}>{item.createdAt}</Text>
+      </View>
+      <Text style={styles.postTitle}>{item.title}</Text>
+      <Text style={styles.postContent} numberOfLines={2}>{item.content}</Text>
+      <View style={styles.postFooter}>
+        <Text style={styles.postAuthor}>by {item.author}</Text>
+        <View style={styles.postStats}>
+          {item.attachments && (
+            <View style={styles.statItem}>
+              <Ionicons name="attach" size={16} color={theme.colors.textSecondary} />
+              <Text style={styles.statText}>{item.attachments}</Text>
+            </View>
+          )}
+          <View style={styles.statItem}>
+            <Ionicons name="heart-outline" size={16} color={theme.colors.textSecondary} />
+            <Text style={styles.statText}>{item.likes}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="chatbubble-outline" size={16} color={theme.colors.textSecondary} />
+            <Text style={styles.statText}>{item.comments}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="eye-outline" size={16} color={theme.colors.textSecondary} />
+            <Text style={styles.statText}>{item.views}</Text>
+          </View>
         </View>
       </View>
-      
-      <Text style={styles.groupTitle}>{item.title}</Text>
-      <Text style={styles.groupDescription} numberOfLines={2}>
-        {item.description}
-      </Text>
-      
-      <View style={styles.groupInfo}>
-        <View style={styles.infoItem}>
-          <Ionicons name="location-outline" size={16} color={theme.colors.textSecondary} />
-          <Text style={styles.infoText}>{item.location}</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Ionicons name="calendar-outline" size={16} color={theme.colors.textSecondary} />
-          <Text style={styles.infoText}>{item.schedule}</Text>
-        </View>
-      </View>
-      
-      <Text style={styles.organizerText}>by {item.organizer}</Text>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Study Board</Text>
@@ -150,7 +162,7 @@ const StudyBoardScreen = () => {
         <Ionicons name="search" size={20} color={theme.colors.textSecondary} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search study groups..."
+          placeholder="Search study materials..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor={theme.colors.textSecondary}
@@ -160,35 +172,35 @@ const StudyBoardScreen = () => {
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false} 
-        style={styles.typesContainer}
+        style={styles.categoriesContainer}
         contentContainerStyle={{ paddingTop: theme.spacing.xs, paddingBottom: 0 }}
       >
-        {types.map((type) => (
+        {categories.map((category) => (
           <TouchableOpacity
-            key={type}
+            key={category}
             style={[
-              styles.typeButton,
-              selectedType === type && styles.typeButtonActive,
+              styles.categoryButton,
+              selectedCategory === category && styles.categoryButtonActive,
             ]}
-            onPress={() => setSelectedType(type)}
+            onPress={() => setSelectedCategory(category)}
           >
             <Text
               style={[
-                styles.typeText,
-                selectedType === type && styles.typeTextActive,
+                styles.categoryText,
+                selectedCategory === category && styles.categoryTextActive,
               ]}
             >
-              {type}
+              {category}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
       <FlatList
-        data={filteredGroups}
-        renderItem={renderStudyGroup}
+        data={filteredPosts}
+        renderItem={renderPost}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.groupsList}
+        contentContainerStyle={styles.postsList}
         showsVerticalScrollIndicator={false}
       />
 
@@ -225,11 +237,11 @@ const styles = StyleSheet.create({
   communityButton: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.secondaryLight,
+    backgroundColor: theme.colors.primaryLight,
     borderRadius: theme.borderRadius.md,
   },
   communityText: {
-    color: theme.colors.secondary,
+    color: theme.colors.primary,
     fontSize: theme.fontSize.sm,
     fontWeight: '600',
   },
@@ -248,10 +260,10 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.base,
     color: theme.colors.text,
   },
-  typesContainer: {
+  categoriesContainer: {
     paddingHorizontal: theme.spacing.lg,
   },
-  typeButton: {
+  categoryButton: {
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
     marginRight: theme.spacing.sm,
@@ -265,88 +277,77 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     flexShrink: 0,
   },
-  typeButtonActive: {
+  categoryButtonActive: {
     backgroundColor: theme.colors.secondary,
     borderColor: theme.colors.secondary,
   },
-  typeText: {
+  categoryText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.text,
     fontWeight: '500',
   },
-  typeTextActive: {
+  categoryTextActive: {
     color: 'white',
   },
-  groupsList: {
+  postsList: {
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
     paddingTop: 0,
   },
-  groupCard: {
+  postCard: {
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.lg,
     borderRadius: theme.borderRadius.md,
     marginBottom: theme.spacing.md,
     ...theme.shadow.sm,
   },
-  groupHeader: {
+  postHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: theme.spacing.sm,
   },
-  typeContainer: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  groupType: {
+  postCategory: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.secondary,
     fontWeight: '600',
   },
-  groupLevel: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
-    fontWeight: '500',
-  },
-  participantInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-  },
-  participantText: {
+  postDate: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
   },
-  groupTitle: {
+  postTitle: {
     fontSize: theme.fontSize.lg,
     fontWeight: 'bold',
     color: theme.colors.text,
     marginBottom: theme.spacing.sm,
   },
-  groupDescription: {
+  postContent: {
     fontSize: theme.fontSize.base,
     color: theme.colors.textSecondary,
     lineHeight: 22,
     marginBottom: theme.spacing.md,
   },
-  groupInfo: {
+  postFooter: {
     flexDirection: 'row',
-    gap: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  infoItem: {
+  postAuthor: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+  },
+  postStats: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  statItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.xs,
   },
-  infoText: {
+  statText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
-  },
-  organizerText: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.sm,
   },
   fab: {
     position: 'absolute',

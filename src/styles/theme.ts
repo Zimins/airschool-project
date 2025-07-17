@@ -14,6 +14,7 @@ export const theme = {
     // Modern additions
     primaryLight: '#818cf8',
     primaryDark: '#4f46e5',
+    secondaryLight: '#fef3c7',
     surfaceElevated: '#f8fafc',
     overlay: 'rgba(0, 0, 0, 0.5)',
     gradient: {
