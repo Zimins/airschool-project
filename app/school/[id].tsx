@@ -28,7 +28,7 @@ const FlightSchoolDetailScreen = () => {
   const reviews = mockReviews.filter(r => r.schoolId === schoolId);
   const ratingDistribution = getRatingDistribution(schoolId as string);
   
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('programs');
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
@@ -59,23 +59,6 @@ const FlightSchoolDetailScreen = () => {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'overview':
-        return (
-          <View style={styles.tabContent}>
-            <Text style={styles.sectionTitle}>Introduction</Text>
-            <Text style={styles.description}>{school.description}</Text>
-            
-            <Text style={styles.sectionTitle}>Features</Text>
-            <View style={styles.featuresContainer}>
-              {school.features.map((feature, index) => (
-                <View key={index} style={styles.featureItem}>
-                  <Text style={styles.featureBullet}>•</Text>
-                  <Text style={styles.featureText}>{feature}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        );
       
       case 'programs':
         return (
@@ -215,7 +198,6 @@ const FlightSchoolDetailScreen = () => {
       <View style={styles.tabContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {[
-            { id: 'overview', label: 'Overview' },
             { id: 'programs', label: 'Programs' },
             { id: 'facilities', label: 'Facilities' },
             { id: 'location', label: 'Location' },
