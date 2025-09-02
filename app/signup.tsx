@@ -8,15 +8,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   StatusBar,
+  Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../src/styles/theme';
+import { useAlert } from '../src/contexts/AlertContext';
+import { useAuth } from '../src/contexts/AuthContext';
 
 const SignupScreen = () => {
   const router = useRouter();
+  const { showAlert } = useAlert();
+  const { signUp } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,33 +29,81 @@ const SignupScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
     if (!name.trim()) {
-      Alert.alert('Please enter your name');
+      showAlert({
+        title: 'Name Required',
+        message: 'Please enter your name',
+        buttons: [{ text: 'OK' }]
+      });
       return;
     }
     if (!email.trim()) {
-      Alert.alert('Please enter your email');
+      showAlert({
+        title: 'Email Required',
+        message: 'Please enter your email address',
+        buttons: [{ text: 'OK' }]
+      });
       return;
     }
     if (!password.trim()) {
-      Alert.alert('Please enter your password');
+      showAlert({
+        title: 'Password Required',
+        message: 'Please enter your password',
+        buttons: [{ text: 'OK' }]
+      });
+      return;
+    }
+    if (password.length < 6) {
+      showAlert({
+        title: 'Weak Password',
+        message: 'Password must be at least 6 characters long',
+        buttons: [{ text: 'OK' }]
+      });
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Passwords do not match');
+      showAlert({
+        title: 'Password Mismatch',
+        message: 'Passwords do not match',
+        buttons: [{ text: 'OK' }]
+      });
       return;
     }
     if (!agreeToTerms) {
-      Alert.alert('Please agree to the terms and conditions');
+      showAlert({
+        title: 'Terms & Conditions',
+        message: 'Please agree to the terms and conditions',
+        buttons: [{ text: 'OK' }]
+      });
       return;
     }
 
-    // In a real app, this would create account with backend
-    Alert.alert('Sign up successful!', 'You will be redirected to the login screen.', [
-      { text: 'OK', onPress: () => router.replace('/login') },
-    ]);
+    setLoading(true);
+    
+    try {
+      // Create account with Supabase
+      await signUp(email, password, { name });
+      
+      showAlert({
+        title: 'Sign Up Successful!',
+        message: 'Your account has been created and you are now logged in!',
+        buttons: [
+          { text: 'OK', onPress: () => router.replace('/') }
+        ]
+      });
+    } catch (error: any) {
+      // Show error message
+      showAlert({
+        title: 'Sign Up Failed',
+        message: error.message || 'An error occurred during sign up. Please try again.',
+        buttons: [{ text: 'OK' }]
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -160,9 +213,17 @@ const SignupScreen = () => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
-            <Text style={styles.signupButtonText}>Sign Up</Text>
-          </TouchableOpacity>
+          <Pressable 
+            style={[styles.signupButton, loading && styles.signupButtonDisabled]} 
+            onPress={() => !loading && handleSignup()}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.signupButtonText}>Sign Up</Text>
+            )}
+          </Pressable>
 
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>Already have an account? </Text>
@@ -291,6 +352,9 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: theme.fontSize.base,
     fontWeight: 'bold',
+  },
+  signupButtonDisabled: {
+    opacity: 0.7,
   },
   loginContainer: {
     flexDirection: 'row',

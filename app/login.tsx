@@ -8,37 +8,75 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
-  StatusBar,
+  StatusBar, 
+  Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../src/styles/theme';
+import { useAlert } from '../src/contexts/AlertContext';
+import { useAuth } from '../src/contexts/AuthContext';
 
 const LoginScreen = () => {
   const router = useRouter();
+  const { showAlert } = useAlert();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email.trim()) {
-      Alert.alert('Please enter your email');
-      return;
-    }
-    if (!password.trim()) {
-      Alert.alert('Please enter your password');
+      showAlert({
+        title: 'Email Required',
+        message: 'Please enter your email address',
+        buttons: [{ text: 'OK' }]
+      });
       return;
     }
 
-    // In a real app, this would authenticate with backend
-    Alert.alert('Login successful!', 'You will be redirected to the home screen.', [
-      { text: 'OK', onPress: () => router.replace('/') },
-    ]);
+    if (!password.trim()) {
+      showAlert({
+        title: 'Password Required',
+        message: 'Please enter your password',
+        buttons: [{ text: 'OK' }]
+      });
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      // 실제 Supabase 인증 시도
+      await signIn(email, password);
+      
+      showAlert({
+        title: 'Login Successful!',
+        message: 'Welcome back!',
+        buttons: [
+          { text: 'OK', onPress: () => router.replace('/') }
+        ]
+      });
+    } catch (error: any) {
+      // 로그인 실패 시 에러 표시
+      showAlert({
+        title: 'Login Failed',
+        message: error.message || 'Invalid email or password. Please try again.',
+        buttons: [{ text: 'OK' }]
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSocialLogin = (provider: string) => {
-    Alert.alert(`${provider} Login`, 'Not supported in prototype.');
+    showAlert({
+      title: `${provider} Login`,
+      message: 'Not supported in prototype.',
+      buttons: [{ text: 'OK' }]
+    });
   };
 
   return (
@@ -106,9 +144,17 @@ const LoginScreen = () => {
             <Text style={styles.forgotPasswordText}>Forgot password?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Log In</Text>
-          </TouchableOpacity>
+          <Pressable 
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+            onPress={() => !loading && handleLogin()}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.loginButtonText}>Log In</Text>
+            )}
+          </Pressable>
 
           <View style={styles.dividerContainer}>
             <View style={styles.divider} />
@@ -237,6 +283,9 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: theme.fontSize.base,
     fontWeight: 'bold',
+  },
+  loginButtonDisabled: {
+    opacity: 0.7,
   },
   dividerContainer: {
     flexDirection: 'row',
