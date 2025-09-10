@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "AirSchool",
-    "slug": "airschool-project",
-    "owner": "zimins",
+    "slug": "prefilghtnet",
+    "owner": "preflightnet",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -35,8 +35,14 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f565a3ab-2f02-4143-ae06-9410a6d0bf57"
+        "projectId": "9604ff06-bbb6-4276-982e-acf219be4f98"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f565a3ab-2f02-4143-ae06-9410a6d0bf57"
     }
   }
 }

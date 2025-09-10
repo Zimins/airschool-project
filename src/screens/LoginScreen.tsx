@@ -5,44 +5,90 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  Pressable,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   Alert,
   StatusBar,
+  ActivityIndicator,
+  Button,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { theme } from '../styles/theme';
+import { useAuth } from '../context/AuthContext';
+import WebButton from '../components/WebButton';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 const LoginScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { state, actions } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleLogin = () => {
+  // Handle authentication state changes
+  React.useEffect(() => {
+    if (state.isAuthenticated && !state.isLoading) {
+      const homeRoute = state.session?.role === 'admin' ? 'Admin' : 'Home';
+      navigation.navigate(homeRoute as never);
+    }
+  }, [state.isAuthenticated, state.isLoading, state.session?.role, navigation]);
+
+  // Use auth error from context
+  React.useEffect(() => {
+    if (state.error) {
+      setErrorMessage(state.error);
+    }
+  }, [state.error]);
+
+  const handleLogin = async () => {
+    console.log('🔴 Login button pressed!');
+    console.log('Email:', email);
+    console.log('Password:', password ? '***' : '(empty)');
+    
+    // Clear previous error
+    setErrorMessage('');
+    
     if (!email.trim()) {
-      Alert.alert('Please enter your email');
+      console.log('❌ Email is empty');
+      setErrorMessage('Please enter your email');
       return;
     }
     if (!password.trim()) {
-      Alert.alert('Please enter your password');
+      console.log('❌ Password is empty');
+      setErrorMessage('Please enter your password');
       return;
     }
 
-    // In a real app, this would authenticate with backend
-    Alert.alert('Login successful!', 'Moving to home screen.', [
-      { text: 'OK', onPress: () => navigation.navigate('Home') },
-    ]);
+    console.log('✅ Starting login process...');
+    setLoading(true);
+    setErrorMessage('');
+    
+    try {
+      console.log('📡 Calling login...');
+      await actions.login({ email: email.trim(), password });
+      console.log('✅ Login successful!');
+      // Navigation will be handled by auth state change in useEffect
+      const homeRoute = state.session?.role === 'admin' ? 'Admin' : 'Home';
+      navigation.navigate(homeRoute as never);
+    } catch (error: any) {
+      console.error('❌ Login failed:', error.message);
+      const errorMsg = error.message || 'Invalid email or password';
+      setErrorMessage(errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSocialLogin = (provider: string) => {
-    Alert.alert(`${provider} Login`, 'Not supported in prototype.');
+    Alert.alert(`${provider} Login`, 'Not supported yet.');
   };
 
   return (
@@ -75,12 +121,13 @@ const LoginScreen = () => {
             <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your email"
+              placeholder="Email"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               placeholderTextColor={theme.colors.textSecondary}
+              testID="email-input"
             />
           </View>
 
@@ -89,11 +136,14 @@ const LoginScreen = () => {
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
-                placeholder="Enter your password"
+                placeholder="Password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 placeholderTextColor={theme.colors.textSecondary}
+                onSubmitEditing={handleLogin}
+                returnKeyType="go"
+                testID="password-input"
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -106,13 +156,34 @@ const LoginScreen = () => {
             </View>
           </View>
 
+          {errorMessage ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          ) : null}
+
           <TouchableOpacity style={styles.forgotPassword}>
             <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Sign In</Text>
-          </TouchableOpacity>
+          <Pressable
+            style={[
+              styles.loginButton,
+              (loading || state.isLoading) && styles.loginButtonDisabled
+            ]}
+            onPress={handleLogin}
+            disabled={loading || state.isLoading}
+            testID="login-button"
+          >
+            {(loading || state.isLoading) ? (
+              <View style={styles.loadingContainer} testID="loading-indicator">
+                <ActivityIndicator color="white" />
+                <Text style={[styles.loginButtonText, { marginLeft: 8 }]}>Signing in...</Text>
+              </View>
+            ) : (
+              <Text style={styles.loginButtonText}>Login</Text>
+            )}
+          </Pressable>
 
           <View style={styles.dividerContainer}>
             <View style={styles.divider} />
@@ -236,11 +307,37 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
+    justifyContent: 'center',
+    minHeight: 48,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      userSelect: 'none',
+    } as any),
+  },
+  loginButtonDisabled: {
+    opacity: 0.6,
+  },
+  loginButtonPressed: {
+    opacity: 0.8,
   },
   loginButtonText: {
     color: 'white',
     fontSize: theme.fontSize.base,
     fontWeight: 'bold',
+  },
+  loginButtonContainer: {
+    marginBottom: theme.spacing.lg,
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: theme.spacing.md,
+  },
+  errorText: {
+    color: '#c62828',
+    fontSize: theme.fontSize.sm,
+    textAlign: 'center',
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -292,6 +389,11 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: theme.fontSize.base,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

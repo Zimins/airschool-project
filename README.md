@@ -76,12 +76,7 @@ eas login
 eas build:configure
 ```
 
-#### Build Commands
-
-- **Web Build**:
-```bash
-eas build --platform web
-```
+#### Native App Builds
 
 - **iOS Build** (requires Apple Developer account):
 ```bash
@@ -98,9 +93,30 @@ eas build --platform android
 eas build --platform all
 ```
 
+#### EAS Hosting (Web Deployment)
+
+EAS Hosting is the recommended way to deploy the web version:
+
+1. **Export the web build**:
+```bash
+npx expo export --platform web
+```
+
+2. **Deploy to EAS Hosting**:
+```bash
+eas deploy
+```
+
+3. **First deployment setup**:
+   - You'll be prompted to connect your project
+   - Choose a preview subdomain (e.g., "airschool")
+   - Your app will be available at:
+     - Preview: `https://airschool--[unique-id].expo.app/`
+     - Production: `https://airschool.expo.app/`
+
 #### Deploy Updates
 
-EAS Update allows you to deploy JavaScript updates without rebuilding:
+**For Native Apps** - EAS Update allows you to deploy JavaScript updates without rebuilding:
 
 ```bash
 # Deploy to default branch
@@ -114,7 +130,12 @@ eas update --branch production
 eas update --message "Fixed navigation bug"
 ```
 
-#### Local Web Build
+**For Web** - Simply run the deploy command again:
+```bash
+npx expo export --platform web && eas deploy
+```
+
+#### Local Web Build Testing
 
 To build and test the web version locally:
 
@@ -126,7 +147,7 @@ npm run build:web
 npx serve web-build
 ```
 
-The built files will be in the `web-build/` directory, which can be deployed to any static hosting service.
+The built files will be in the `web-build/` directory.
 
 ### Alternative Deployment Options
 

@@ -10,51 +10,125 @@ import {
   ScrollView,
   Alert,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { theme } from '../styles/theme';
+import { useAuth } from '../context/AuthContext';
+import { UserModel } from '../models/User';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Signup'>;
 
 const SignupScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const [name, setName] = useState('');
+  const { state, actions } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    general: '',
+  });
 
-  const handleSignup = () => {
-    if (!name.trim()) {
-      Alert.alert('Please enter your name');
-      return;
+  // Handle authentication state changes
+  React.useEffect(() => {
+    if (state.isAuthenticated && !state.isLoading) {
+      const homeRoute = state.session?.role === 'admin' ? 'Admin' : 'Home';
+      navigation.navigate(homeRoute as never);
     }
-    if (!email.trim()) {
-      Alert.alert('Please enter your email');
-      return;
+  }, [state.isAuthenticated, state.isLoading, state.session?.role, navigation]);
+
+  // Use auth error from context
+  React.useEffect(() => {
+    if (state.error) {
+      setErrors(prev => ({ ...prev, general: state.error! }));
     }
-    if (!password.trim()) {
-      Alert.alert('Please enter your password');
-      return;
+  }, [state.error]);
+
+  const clearErrors = () => {
+    setErrors({
+      email: '',
+      password: '',
+      confirmPassword: '',
+      general: '',
+    });
+    actions.clearError();
+  };
+
+  const validateForm = (): boolean => {
+    clearErrors();
+    let isValid = true;
+    const newErrors = {
+      email: '',
+      password: '',
+      confirmPassword: '',
+      general: '',
+    };
+
+    // Validate email
+    try {
+      UserModel.validateEmail(email);
+    } catch (error) {
+      newErrors.email = error instanceof Error ? error.message : 'Invalid email';
+      isValid = false;
     }
+
+    // Validate password
+    try {
+      UserModel.validatePassword(password);
+    } catch (error) {
+      newErrors.password = error instanceof Error ? error.message : 'Invalid password';
+      isValid = false;
+    }
+
+    // Validate password confirmation
     if (password !== confirmPassword) {
-      Alert.alert('Passwords do not match');
-      return;
+      newErrors.confirmPassword = 'Passwords do not match';
+      isValid = false;
     }
-    if (!agreeToTerms) {
-      Alert.alert('Please agree to the terms and conditions');
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleSignup = async () => {
+    if (loading || state.isLoading) return;
+
+    if (!validateForm()) {
       return;
     }
 
-    // In a real app, this would create account with backend
-    Alert.alert('Sign up successful!', 'Moving to login screen.', [
-      { text: 'OK', onPress: () => navigation.navigate('Login') },
-    ]);
+    setLoading(true);
+
+    try {
+      await actions.register({
+        email: email.trim(),
+        password,
+        role: 'user', // New users are regular users by default
+      });
+      // Navigation will be handled in useEffect above
+    } catch (error) {
+      console.error('Signup error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Signup failed';
+      setErrors(prev => ({ ...prev, general: errorMessage }));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -91,32 +165,38 @@ const SignupScreen = () => {
               value={name}
               onChangeText={setName}
               placeholderTextColor={theme.colors.textSecondary}
+              testID="name-input"
             />
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.email && styles.inputError]}
               placeholder="Enter your email"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               placeholderTextColor={theme.colors.textSecondary}
+              testID="email-input"
             />
+            {errors.email ? (
+              <Text style={styles.fieldErrorText}>{errors.email}</Text>
+            ) : null}
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
-                style={[styles.input, styles.passwordInput]}
+                style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
                 placeholder="Enter your password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 placeholderTextColor={theme.colors.textSecondary}
+                testID="password-input"
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -127,18 +207,22 @@ const SignupScreen = () => {
                 </Text>
               </TouchableOpacity>
             </View>
+            {errors.password ? (
+              <Text style={styles.fieldErrorText}>{errors.password}</Text>
+            ) : null}
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Confirm Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
-                style={[styles.input, styles.passwordInput]}
+                style={[styles.input, styles.passwordInput, errors.confirmPassword && styles.inputError]}
                 placeholder="Re-enter your password"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirmPassword}
                 placeholderTextColor={theme.colors.textSecondary}
+                testID="confirm-password-input"
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -149,6 +233,9 @@ const SignupScreen = () => {
                 </Text>
               </TouchableOpacity>
             </View>
+            {errors.confirmPassword ? (
+              <Text style={styles.fieldErrorText}>{errors.confirmPassword}</Text>
+            ) : null}
           </View>
 
           <TouchableOpacity
@@ -164,8 +251,23 @@ const SignupScreen = () => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
-            <Text style={styles.signupButtonText}>Sign Up</Text>
+          {errors.general ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{errors.general}</Text>
+            </View>
+          ) : null}
+
+          <TouchableOpacity 
+            style={[styles.signupButton, (loading || !agreeToTerms) && styles.signupButtonDisabled]} 
+            onPress={handleSignup}
+            disabled={loading || !agreeToTerms}
+            testID="signup-button"
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.signupButtonText}>Sign Up</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.loginContainer}>
@@ -291,10 +393,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
   },
+  signupButtonDisabled: {
+    opacity: 0.6,
+  },
   signupButtonText: {
     color: 'white',
     fontSize: theme.fontSize.base,
     fontWeight: 'bold',
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: theme.spacing.md,
+  },
+  errorText: {
+    color: '#c62828',
+    fontSize: theme.fontSize.sm,
+    textAlign: 'center',
   },
   loginContainer: {
     flexDirection: 'row',
@@ -309,6 +425,15 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: theme.fontSize.base,
     fontWeight: '600',
+  },
+  inputError: {
+    borderColor: '#c62828',
+    borderWidth: 2,
+  },
+  fieldErrorText: {
+    color: '#c62828',
+    fontSize: theme.fontSize.sm,
+    marginTop: theme.spacing.xs,
   },
 });
 

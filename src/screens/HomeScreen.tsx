@@ -19,11 +19,15 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { mockFlightSchools } from '../data/mockData';
 import { theme } from '../styles/theme';
 import FlightSchoolCard from '../components/FlightSchoolCard';
+import { useAuth } from '../context/AuthContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { state, actions } = useAuth();
+  const { user, session } = state;
+  const isAdmin = session?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [filteredSchools, setFilteredSchools] = useState(mockFlightSchools);
@@ -60,14 +64,37 @@ const HomeScreen = () => {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.headerTitle}>AirSchool</Text>
-              <Text style={styles.headerTagline}>Korea's #1 Flight School Platform</Text>
+              <Text style={styles.headerTagline}>
+                {user ? `Welcome, ${user.email?.split('@')[0]}!` : "Korea's #1 Flight School Platform"}
+              </Text>
             </View>
-            <TouchableOpacity
-              style={styles.profileButton}
-              onPress={() => navigation.navigate('Login')}
-            >
-              <Ionicons name="person-circle-outline" size={32} color="white" />
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              {isAdmin && (
+                <TouchableOpacity
+                  style={styles.adminButton}
+                  onPress={() => navigation.navigate('Admin')}
+                >
+                  <Ionicons name="shield-checkmark-outline" size={28} color="white" />
+                </TouchableOpacity>
+              )}
+              {user ? (
+                <TouchableOpacity
+                  style={styles.profileButton}
+                  onPress={async () => {
+                    await actions.logout();
+                  }}
+                >
+                  <Ionicons name="log-out-outline" size={32} color="white" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.profileButton}
+                  onPress={() => navigation.navigate('Login')}
+                >
+                  <Ionicons name="person-circle-outline" size={32} color="white" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
           
           <Text style={styles.headerSubtitle}>
@@ -96,14 +123,14 @@ const HomeScreen = () => {
       <View style={styles.boardButtonsContainer}>
         <TouchableOpacity 
           style={styles.boardButton}
-          onPress={() => navigation.navigate('CommunityBoard' as any)}
+          onPress={() => navigation.navigate('CommunityBoard')}
         >
           <Ionicons name="chatbubbles-outline" size={24} color={theme.colors.primary} />
           <Text style={styles.boardButtonText}>Community Board</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.boardButton}
-          onPress={() => navigation.navigate('StudyBoard' as any)}
+          onPress={() => navigation.navigate('StudyBoard')}
         >
           <Ionicons name="school-outline" size={24} color={theme.colors.secondary} />
           <Text style={styles.boardButtonText}>Study Board</Text>
@@ -192,6 +219,14 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: theme.spacing.xs,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  adminButton: {
+    padding: theme.spacing.sm,
+    marginRight: theme.spacing.xs,
   },
   profileButton: {
     padding: theme.spacing.sm,
