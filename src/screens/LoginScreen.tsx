@@ -87,10 +87,6 @@ const LoginScreen = () => {
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    Alert.alert(`${provider} Login`, 'Not supported yet.');
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -184,28 +180,6 @@ const LoginScreen = () => {
               <Text style={styles.loginButtonText}>Login</Text>
             )}
           </Pressable>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.divider} />
-          </View>
-
-          <View style={styles.socialButtons}>
-            <TouchableOpacity
-              style={[styles.socialButton, styles.googleButton]}
-              onPress={() => handleSocialLogin('Google')}
-            >
-              <Text style={styles.socialButtonText}>🔵 Sign in with Google</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.socialButton, styles.facebookButton]}
-              onPress={() => handleSocialLogin('Facebook')}
-            >
-              <Text style={styles.socialButtonText}>📘 Sign in with Facebook</Text>
-            </TouchableOpacity>
-          </View>
 
           <View style={styles.signupContainer}>
             <Text style={styles.signupText}>Don't have an account? </Text>
@@ -339,47 +313,11 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     textAlign: 'center',
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: theme.colors.border,
-  },
-  dividerText: {
-    marginHorizontal: theme.spacing.md,
-    color: theme.colors.textSecondary,
-    fontSize: theme.fontSize.sm,
-  },
-  socialButtons: {
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
-  },
-  socialButton: {
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  googleButton: {
-    backgroundColor: 'white',
-  },
-  facebookButton: {
-    backgroundColor: 'white',
-  },
-  socialButtonText: {
-    fontSize: theme.fontSize.base,
-    fontWeight: '600',
-    color: theme.colors.text,
-  },
   signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: theme.spacing.xl,
   },
   signupText: {
     color: theme.colors.textSecondary,
