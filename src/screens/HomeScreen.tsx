@@ -19,6 +19,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { mockFlightSchools } from '../data/mockData';
 import { theme } from '../styles/theme';
+import { FlightSchoolService } from '../services/FlightSchoolService';
+import { FlightSchool } from '../types/flightSchool';
 import FlightSchoolCard from '../components/FlightSchoolCard';
 import ProfileMenu from '../components/ProfileMenu';
 import ProfileSettingsModal from '../components/ProfileSettingsModal';
@@ -33,27 +35,51 @@ const HomeScreen = () => {
   const isAdmin = session?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [filteredSchools, setFilteredSchools] = useState<typeof mockFlightSchools>([]);
+  const [filteredSchools, setFilteredSchools] = useState<FlightSchool[]>([]);
+  const [allSchools, setAllSchools] = useState<FlightSchool[]>([]);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [flightSchoolService] = useState(() => new FlightSchoolService());
 
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
+    loadFlightSchools();
   }, []);
 
   useEffect(() => {
-    if (!isLoading) {
-      const filtered = mockFlightSchools.filter(
-        school =>
-          school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          school.location.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredSchools(filtered);
+    if (!isLoading && allSchools.length > 0) {
+      if (searchQuery.trim()) {
+        const filtered = allSchools.filter(
+          school =>
+            school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            school.location.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setFilteredSchools(filtered);
+      } else {
+        setFilteredSchools(allSchools);
+      }
     }
-  }, [searchQuery, isLoading]);
+  }, [searchQuery, allSchools, isLoading]);
+
+  const loadFlightSchools = async () => {
+    console.log('🔄 Loading flight schools from Supabase...');
+    setIsLoading(true);
+
+    try {
+      const schools = await flightSchoolService.getAllFlightSchools();
+      console.log(`✅ Loaded ${schools.length} flight schools from database`);
+      setAllSchools(schools);
+      setFilteredSchools(schools);
+    } catch (error) {
+      console.error('❌ Error loading flight schools:', error);
+      console.error('💾 Database connection failed - no fallback data available');
+
+      // Show empty state instead of mock data
+      setAllSchools([]);
+      setFilteredSchools([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSchoolPress = (schoolId: string) => {
     navigation.navigate('FlightSchoolDetail', { schoolId });
@@ -269,8 +295,18 @@ const HomeScreen = () => {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Ionicons name="airplane-outline" size={48} color={theme.colors.textSecondary} />
-              <Text style={styles.emptyText}>No flight schools found</Text>
+              <Ionicons name="warning-outline" size={48} color={theme.colors.error} />
+              <Text style={styles.emptyText}>Database Connection Failed</Text>
+              <Text style={styles.emptySubtext}>
+                Please check Supabase configuration and ensure flight_schools table exists.
+              </Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={loadFlightSchools}
+              >
+                <Ionicons name="refresh-outline" size={20} color="white" />
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
             </View>
           )
         }
@@ -321,8 +357,33 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginTop: theme.spacing.md,
+    fontSize: theme.fontSize.lg,
+    fontWeight: '600',
+    color: theme.colors.error,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    marginTop: theme.spacing.sm,
     fontSize: theme.fontSize.base,
     color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginTop: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: theme.fontSize.base,
+    fontWeight: '600',
   },
   headerWrapper: {
     marginBottom: theme.spacing.lg,
