@@ -201,6 +201,14 @@ export class SessionManager {
    */
   static isAuthenticated(session: UserSession | null): boolean {
     if (!session) return false;
+
+    // If using Supabase session, check if it exists and is valid
+    if (session.supabaseSession) {
+      // For Supabase Auth sessions, we rely on Supabase's own session management
+      return true; // Session validity is handled by Supabase Auth
+    }
+
+    // Fallback to our custom session validation for legacy sessions
     if (this.isSessionExpired(session)) return false;
     if (!this.verifySessionToken(session)) return false;
     return true;

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an AirSchool React Native for Web prototype application that connects aspiring pilots with flight schools. The app is built using Expo and React Native Web, focusing on UI/UX with mock data. **NEW**: Basic authentication system implemented using Supabase backend (without Supabase Auth) for simple email/password login with admin support.
+This is an AirSchool React Native for Web prototype application that connects aspiring pilots with flight schools. The app is built using Expo and React Native Web, focusing on UI/UX with mock data. **UPDATED**: Full authentication system implemented using Supabase Auth for secure email/password login with role-based access control (admin/user).
 
 ## Common Development Commands
 
@@ -81,7 +81,7 @@ src/
 2. **Styling**: Using React Native StyleSheet API with a centralized theme
 3. **State Management**: React Context for auth state, local component state for UI
 4. **Data**: Mock data in `mockData.ts` + Supabase for user authentication data
-5. **Authentication**: Simple email/password system with Supabase backend, SHA-256 password hashing, AsyncStorage for sessions
+5. **Authentication**: Supabase Auth system with email/password authentication, role-based access control, and automatic session management
 
 ### Important Files
 
@@ -89,10 +89,12 @@ src/
 - `src/styles/theme.ts`: Central theme configuration with colors, spacing, etc.
 - `src/navigation/AppNavigator.tsx`: Main navigation configuration
 - `App.tsx`: Root component with navigation setup
-- `src/services/auth.ts`: Authentication service with Supabase integration (NEW)
-- `src/context/AuthContext.tsx`: React context for authentication state (NEW)
-- `src/components/ProtectedRoute.tsx`: Route protection component (NEW)
-- `supabase/migrations/`: Database schema for user authentication (NEW)
+- `src/services/AuthService.ts`: Authentication service with Supabase Auth integration
+- `src/context/AuthContext.tsx`: React context for authentication state management
+- `src/components/ProtectedRoute.tsx`: Route protection component for secured screens
+- `src/types/auth.ts`: TypeScript definitions for authentication system
+- `src/utils/session.ts`: Session management utilities
+- `supabase/migrations/`: Database schema files (legacy, now using Supabase Auth)
 
 ### Component Architecture
 
@@ -116,5 +118,21 @@ All data is static and resets on app refresh.
 3. Use the mock data structure when adding new features
 4. For authentication: Use AuthContext for auth state, ProtectedRoute for secured screens
 5. Test authentication flows: login, logout, admin access, session persistence
-6. Database migrations: Use Supabase migrations for schema changes
-7. Security: Never expose password hashes, validate inputs, use RLS policies
+6. Authentication is handled by Supabase Auth (no custom database tables needed)
+7. Security: Use Supabase's built-in security features, validate inputs, use RLS policies
+
+## Test Accounts
+
+For development and testing, use these pre-configured accounts:
+
+**Regular User:**
+- Email: `test@airschool.com`
+- Password: `testpassword123`
+- Role: `user`
+
+**Administrator:**
+- Email: `admin@airschool.com`
+- Password: `admin123`
+- Role: `admin`
+
+**Setup Note:** Disable email confirmations in Supabase Auth settings for development, or manually confirm users in the Supabase dashboard under Authentication > Users.

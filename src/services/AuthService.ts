@@ -32,52 +32,41 @@ export class AuthService {
   }
 
   /**
-   * T024: Implement AuthService.login() method
-   * Authenticate user with email and password
+   * T024: Implement AuthService.login() method using Supabase Auth
+   * Authenticate user with email and password using Supabase Auth
    */
   async login(credentials: UserLoginData): Promise<UserSession | null> {
     try {
       // Validate input
       UserModel.validateUserLoginData(credentials);
-      
+
       const normalizedEmail = UserModel.normalizeEmail(credentials.email);
-      
-      // Query user from database
-      const { data: userData, error } = await this.supabase
-        .from('users')
-        .select('id, email, password_hash, role, is_active, last_login, created_at')
-        .eq('email', normalizedEmail)
-        .eq('is_active', true)
-        .single();
 
-      if (error || !userData) {
+      // Use Supabase Auth for authentication
+      const { data, error } = await this.supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: credentials.password,
+      });
+
+      if (error || !data.user || !data.session) {
+        console.error('Supabase Auth error:', error?.message);
         return null; // Invalid credentials
       }
 
-      // Verify password
-      const isValidPassword = CryptoUtils.verifyPassword(
-        credentials.password, 
-        userData.password_hash
-      );
+      // Get user role from user metadata or default to 'user'
+      const userRole = data.user.user_metadata?.role || 'user';
 
-      if (!isValidPassword) {
-        return null; // Invalid credentials
-      }
+      // Create our internal session format
+      const session: UserSession = {
+        userId: data.user.id,
+        email: data.user.email || normalizedEmail,
+        role: userRole as 'user' | 'admin',
+        loginTimestamp: Date.now(),
+        token: data.session.access_token,
+        supabaseSession: data.session // Store the full Supabase session
+      };
 
-      // Update last login timestamp
-      await this.supabase
-        .from('users')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', userData.id);
-
-      // Create session
-      const session = SessionManager.createSession(
-        userData.id,
-        userData.email,
-        userData.role
-      );
-
-      // Save session
+      // Save session to AsyncStorage
       await SessionManager.saveSession(session);
 
       return session;
@@ -85,55 +74,45 @@ export class AuthService {
       if (error instanceof UserValidationError) {
         throw error;
       }
+      console.error('Login error:', error);
       throw new Error('Login failed');
     }
   }
 
   /**
-   * T025: Implement AuthService.register() method
-   * Create new user account
+   * T025: Implement AuthService.register() method using Supabase Auth
+   * Create new user account using Supabase Auth
    */
-  async register(userData: UserCreateData): Promise<User> {
+  async register(userData: UserCreateData): Promise<any> {
     try {
       // Validate input
       UserModel.validateUserCreateData(userData);
-      
+
       const normalizedEmail = UserModel.normalizeEmail(userData.email);
-      
-      // Check if email already exists
-      const { data: existingUser } = await this.supabase
-        .from('users')
-        .select('id')
-        .eq('email', normalizedEmail)
-        .single();
 
-      if (existingUser) {
-        throw new Error('Email already exists');
+      // Create user with Supabase Auth
+      const { data, error } = await this.supabase.auth.signUp({
+        email: normalizedEmail,
+        password: userData.password,
+        options: {
+          data: {
+            role: userData.role || 'user'
+          }
+        }
+      });
+
+      if (error) {
+        console.error('Supabase Auth signup error:', error?.message);
+        throw new Error(error?.message || 'Failed to create user');
       }
 
-      // Hash password
-      const passwordHash = CryptoUtils.hashPassword(userData.password);
-
-      // Create user in database
-      const { data: newUser, error } = await this.supabase
-        .from('users')
-        .insert([{
-          email: normalizedEmail,
-          password_hash: passwordHash,
-          role: userData.role || 'user'
-        }])
-        .select('id, email, role, created_at, last_login, is_active')
-        .single();
-
-      if (error || !newUser) {
-        throw new Error('Failed to create user');
-      }
-
-      return UserModel.formatUserForDisplay(newUser);
+      // Return the full Supabase Auth response so caller can handle different scenarios
+      return data;
     } catch (error) {
       if (error instanceof UserValidationError) {
         throw error;
       }
+      console.error('Registration error:', error);
       throw error;
     }
   }
@@ -213,14 +192,18 @@ export class AuthService {
 
   /**
    * T027: Add error handling and validation to AuthService methods
-   * Logout functionality
+   * Logout functionality using Supabase Auth
    */
   async logout(): Promise<void> {
     try {
+      // Sign out from Supabase Auth
+      await this.supabase.auth.signOut();
+      // Clear local session
       await SessionManager.clearSession();
     } catch (error) {
       console.warn('Logout cleanup failed:', error);
-      // Don't throw - logout should always succeed from user perspective
+      // Still clear local session even if Supabase logout fails
+      await SessionManager.clearSession();
     }
   }
 
@@ -232,6 +215,23 @@ export class AuthService {
       return await SessionManager.getSession();
     } catch (error) {
       console.warn('Failed to get current session:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get current Supabase Auth session
+   */
+  async getCurrentSupabaseSession(): Promise<any> {
+    try {
+      const { data: { session }, error } = await this.supabase.auth.getSession();
+      if (error) {
+        console.warn('Supabase session error:', error.message);
+        return null;
+      }
+      return session;
+    } catch (error) {
+      console.warn('Failed to get Supabase session:', error);
       return null;
     }
   }

@@ -29,6 +29,7 @@ export interface UserSession {
   role: 'user' | 'admin';
   loginTimestamp: number;
   token: string;
+  supabaseSession?: any; // Store the full Supabase session for advanced features
 }
 
 export interface DatabaseUser {

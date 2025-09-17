@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +20,8 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { mockFlightSchools } from '../data/mockData';
 import { theme } from '../styles/theme';
 import FlightSchoolCard from '../components/FlightSchoolCard';
+import ProfileMenu from '../components/ProfileMenu';
+import ProfileSettingsModal from '../components/ProfileSettingsModal';
 import { useAuth } from '../context/AuthContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -30,7 +33,9 @@ const HomeScreen = () => {
   const isAdmin = session?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [filteredSchools, setFilteredSchools] = useState(mockFlightSchools);
+  const [filteredSchools, setFilteredSchools] = useState<typeof mockFlightSchools>([]);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   useEffect(() => {
     // Simulate loading
@@ -40,16 +45,115 @@ const HomeScreen = () => {
   }, []);
 
   useEffect(() => {
-    const filtered = mockFlightSchools.filter(
-      school =>
-        school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        school.location.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setFilteredSchools(filtered);
-  }, [searchQuery]);
+    if (!isLoading) {
+      const filtered = mockFlightSchools.filter(
+        school =>
+          school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          school.location.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredSchools(filtered);
+    }
+  }, [searchQuery, isLoading]);
 
   const handleSchoolPress = (schoolId: string) => {
     navigation.navigate('FlightSchoolDetail', { schoolId });
+  };
+
+  const handleRoleChange = async () => {
+    console.log('🟢 HomeScreen: handleRoleChange called!');
+    console.log('🟢 Current session:', session);
+    console.log('🟢 Current isAdmin:', isAdmin);
+
+    const newRole = isAdmin ? 'user' : 'admin';
+    const roleDisplayName = newRole === 'admin' ? 'Administrator' : 'Regular User';
+
+    console.log('🟢 Target role:', newRole);
+    console.log('🟢 Target display name:', roleDisplayName);
+
+    try {
+      console.log(`🔄 Switching role from ${session?.role} to ${newRole}...`);
+
+      // Use Supabase Auth updateUser to change role
+      const { createClient } = require('@supabase/supabase-js');
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase configuration missing');
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const { data, error } = await supabase.auth.updateUser({
+        data: {
+          role: newRole,
+          role_changed_at: new Date().toISOString(),
+          role_change_count: (session?.supabaseSession?.user?.user_metadata?.role_change_count || 0) + 1
+        }
+      });
+
+      if (error) {
+        console.error('❌ Role change error:', error.message);
+
+        if (Platform.OS === 'web') {
+          window.alert(`Role Change Failed\n\nUnable to switch to ${roleDisplayName} role.\n\nError: ${error.message}`);
+        } else {
+          Alert.alert(
+            'Role Change Failed',
+            `Unable to switch to ${roleDisplayName} role.\n\nError: ${error.message}`,
+            [{ text: 'OK' }]
+          );
+        }
+        return;
+      }
+
+      console.log('✅ Role changed successfully:', newRole);
+      console.log('Updated user metadata:', data.user?.user_metadata);
+
+      // Refresh the session to get updated role
+      await actions.checkSession();
+
+      // Show success alert with additional context
+      const successMessage = `🎉 Role Changed Successfully!\n\nYou are now logged in as ${roleDisplayName}.\n\n` +
+        `${newRole === 'admin'
+          ? '• You now have access to the Admin Dashboard\n• Admin features are now available'
+          : '• Admin features are now hidden\n• You have standard user permissions'
+        }`;
+
+      if (Platform.OS === 'web') {
+        window.alert(successMessage);
+      } else {
+        Alert.alert(
+          '🎉 Role Changed Successfully!',
+          `You are now logged in as ${roleDisplayName}.\n\n` +
+          `${newRole === 'admin'
+            ? '• You now have access to the Admin Dashboard\n• Admin features are now available'
+            : '• Admin features are now hidden\n• You have standard user permissions'
+          }`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                console.log(`🎯 User role successfully changed to: ${newRole.toUpperCase()}`);
+              }
+            }
+          ]
+        );
+      }
+
+      console.log(`🎯 User role successfully changed to: ${newRole.toUpperCase()}`);
+
+    } catch (error) {
+      console.error('❌ Role change failed:', error);
+
+      const errorMessage = 'Failed to change role. Please try again.\n\nIf the problem persists, please check your internet connection.';
+
+      if (Platform.OS === 'web') {
+        window.alert(`Error\n\n${errorMessage}`);
+      } else {
+        Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
+      }
+    }
   };
 
   const renderHeader = () => (
@@ -80,11 +184,9 @@ const HomeScreen = () => {
               {user ? (
                 <TouchableOpacity
                   style={styles.profileButton}
-                  onPress={async () => {
-                    await actions.logout();
-                  }}
+                  onPress={() => setShowProfileMenu(true)}
                 >
-                  <Ionicons name="log-out-outline" size={32} color="white" />
+                  <Ionicons name="person-circle-outline" size={32} color="white" />
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
@@ -147,15 +249,6 @@ const HomeScreen = () => {
     </View>
   );
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Loading flight schools...</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <FlatList
@@ -168,8 +261,39 @@ const HomeScreen = () => {
           />
         )}
         ListHeaderComponent={renderHeader}
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={styles.listLoadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={styles.listLoadingText}>Loading flight schools...</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="airplane-outline" size={48} color={theme.colors.textSecondary} />
+              <Text style={styles.emptyText}>No flight schools found</Text>
+            </View>
+          )
+        }
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+      />
+
+      <ProfileMenu
+        visible={showProfileMenu}
+        onClose={() => setShowProfileMenu(false)}
+        user={user}
+        session={session}
+        onLogout={actions.logout}
+        onNavigateToAdmin={() => navigation.navigate('Admin')}
+        onRoleChange={handleRoleChange}
+        onShowProfileSettings={() => setShowProfileSettings(true)}
+      />
+
+      <ProfileSettingsModal
+        visible={showProfileSettings}
+        onClose={() => setShowProfileSettings(false)}
+        user={user}
+        session={session}
       />
     </View>
   );
@@ -180,13 +304,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  loadingContainer: {
-    flex: 1,
+  listLoadingContainer: {
+    paddingVertical: theme.spacing.xxxl,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
   },
-  loadingText: {
+  listLoadingText: {
+    marginTop: theme.spacing.md,
+    fontSize: theme.fontSize.base,
+    color: theme.colors.textSecondary,
+  },
+  emptyContainer: {
+    paddingVertical: theme.spacing.xxxl,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
     marginTop: theme.spacing.md,
     fontSize: theme.fontSize.base,
     color: theme.colors.textSecondary,

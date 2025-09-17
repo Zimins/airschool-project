@@ -9,6 +9,8 @@ AirSchool is a React Native for Web prototype application that connects aspiring
 - **Community Board**: Share experiences and ask questions with fellow pilots
 - **Study Materials Board**: Access and share aviation study resources
 - **Review System**: Read and write reviews for flight schools
+- **User Authentication**: Secure login/signup system with Supabase Auth
+- **Role-based Access**: Admin and user roles with different permissions
 - **Responsive Design**: Works seamlessly on web, iOS, and Android
 
 ## Tech Stack
@@ -17,6 +19,8 @@ AirSchool is a React Native for Web prototype application that connects aspiring
 - **Web Support**: React Native Web
 - **Navigation**: React Navigation (Native Stack)
 - **Routing**: Expo Router
+- **Authentication**: Supabase Auth
+- **Database**: Supabase (PostgreSQL)
 - **Styling**: React Native StyleSheet with custom theme
 - **TypeScript**: For type safety
 - **Icons**: Expo Vector Icons
@@ -47,11 +51,34 @@ npm install
 npm start
 ```
 
+### Environment Setup
+
+Create a `.env` file in the root directory with your Supabase configuration:
+
+```env
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
 ### Running the Application
 
 - **Web**: `npm run web` or press `w` in the Expo CLI
 - **iOS**: `npm run ios` or press `i` in the Expo CLI (requires macOS and Xcode)
 - **Android**: `npm run android` or press `a` in the Expo CLI (requires Android Studio)
+
+### Test Accounts
+
+For development and testing, the following accounts are available:
+
+**Regular User:**
+- Email: `test@airschool.com`
+- Password: `testpassword123`
+
+**Administrator:**
+- Email: `admin@airschool.com`
+- Password: `admin123`
+
+**Note**: Make sure to disable email confirmations in your Supabase Auth settings for development, or manually confirm these users in the Supabase dashboard.
 
 ## Deployment
 

@@ -132,15 +132,45 @@ export function AuthProvider({ children }: AuthProviderProps) {
     dispatch({ type: 'CLEAR_ERROR' });
 
     try {
-      const user = await authService.register(userData);
-      
-      // After successful registration, automatically log in
-      const loginCredentials: UserLoginData = {
-        email: userData.email,
-        password: userData.password,
-      };
-      
-      await login(loginCredentials);
+      const result = await authService.register(userData);
+
+      // Check if user was created and session exists (email confirmation disabled)
+      if (result && result.session) {
+        // If we got a session back, the user is immediately signed in
+        const userRole = result.user?.user_metadata?.role || 'user';
+
+        const user: User = {
+          id: result.user!.id,
+          email: result.user!.email || userData.email,
+          role: userRole as 'user' | 'admin',
+          created_at: result.user!.created_at || new Date().toISOString(),
+          last_login: null,
+          is_active: true,
+        };
+
+        const session: UserSession = {
+          userId: result.user!.id,
+          email: result.user!.email || userData.email,
+          role: userRole as 'user' | 'admin',
+          loginTimestamp: Date.now(),
+          token: result.session.access_token,
+          supabaseSession: result.session
+        };
+
+        // Save session and update state
+        await SessionManager.saveSession(session);
+        dispatch({
+          type: 'SET_USER',
+          payload: { user, session }
+        });
+      } else {
+        // Registration successful but email confirmation required
+        dispatch({ type: 'SET_LOADING', payload: false });
+        dispatch({
+          type: 'SET_ERROR',
+          payload: 'Registration successful! Please check your email to confirm your account before signing in.'
+        });
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Registration failed';
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
@@ -152,25 +182,48 @@ export function AuthProvider({ children }: AuthProviderProps) {
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
-      const session = await SessionManager.getSession();
-      
-      if (session && SessionManager.isAuthenticated(session)) {
-        // Session is valid, restore user state
+      // First check Supabase Auth session
+      const supabaseSession = await authService.getCurrentSupabaseSession();
+
+      if (supabaseSession && supabaseSession.user) {
+        // Valid Supabase session exists
+        const userRole = supabaseSession.user.user_metadata?.role || 'user';
+
         const user: User = {
-          id: session.userId,
-          email: session.email,
-          role: session.role,
-          created_at: new Date().toISOString(),
-          last_login: new Date(session.loginTimestamp).toISOString(),
+          id: supabaseSession.user.id,
+          email: supabaseSession.user.email || '',
+          role: userRole as 'user' | 'admin',
+          created_at: supabaseSession.user.created_at || new Date().toISOString(),
+          last_login: supabaseSession.user.last_sign_in_at || null,
           is_active: true,
         };
 
-        dispatch({ 
-          type: 'SET_USER', 
-          payload: { user, session } 
+        const session: UserSession = {
+          userId: supabaseSession.user.id,
+          email: supabaseSession.user.email || '',
+          role: userRole as 'user' | 'admin',
+          loginTimestamp: Date.now(),
+          token: supabaseSession.access_token,
+          supabaseSession
+        };
+
+        // Save to local storage for offline access
+        await SessionManager.saveSession(session);
+
+        dispatch({
+          type: 'SET_USER',
+          payload: { user, session }
         });
       } else {
-        // No valid session
+        // No valid Supabase session, check local storage as fallback
+        const localSession = await SessionManager.getSession();
+
+        if (localSession && SessionManager.isAuthenticated(localSession)) {
+          // Local session exists but Supabase session doesn't - this shouldn't happen in normal flow
+          // Clear local session to maintain consistency
+          await SessionManager.clearSession();
+        }
+
         dispatch({ type: 'LOGOUT' });
       }
     } catch (error) {
