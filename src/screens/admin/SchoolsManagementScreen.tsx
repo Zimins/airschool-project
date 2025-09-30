@@ -10,10 +10,12 @@ import {
   TextInput,
   Modal,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
 import { createClient } from '@supabase/supabase-js';
+import { pickAndUploadSchoolImage } from '../../services/ImageUploadService';
 
 interface School {
   id: string;
@@ -36,6 +38,7 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [formData, setFormData] = useState<Partial<School>>({
     name: '',
     location: '',
@@ -45,6 +48,7 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
     contact_email: '',
     contact_phone: '',
     contact_website: '',
+    image_url: '',
   });
 
   const supabase = createClient(
@@ -100,8 +104,32 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
       contact_email: school.contact_email || '',
       contact_phone: school.contact_phone || '',
       contact_website: school.contact_website || '',
+      image_url: school.image_url || '',
     });
     setModalVisible(true);
+  };
+
+  const handleImageUpload = async () => {
+    try {
+      setUploadingImage(true);
+
+      // Generate temporary ID for new schools
+      const schoolId = editingSchool?.id || `temp_${Date.now()}`;
+
+      const result = await pickAndUploadSchoolImage(schoolId);
+
+      if (result.success && result.url) {
+        setFormData({ ...formData, image_url: result.url });
+        Alert.alert('Success', 'Image uploaded successfully');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Error', 'Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleDeleteSchool = async (schoolId: string, schoolName: string) => {
@@ -155,6 +183,7 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
             contact_email: formData.contact_email,
             contact_phone: formData.contact_phone,
             contact_website: formData.contact_website,
+            image_url: formData.image_url,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingSchool.id);
@@ -172,6 +201,7 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
           contact_email: formData.contact_email,
           contact_phone: formData.contact_phone,
           contact_website: formData.contact_website,
+          image_url: formData.image_url,
           rating: 0,
           review_count: 0,
         });
@@ -326,6 +356,46 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
                 keyboardType="url"
                 autoCapitalize="none"
               />
+
+              <Text style={styles.label}>Thumbnail Image</Text>
+              <View style={styles.imageSection}>
+                {formData.image_url ? (
+                  <View style={styles.imagePreviewContainer}>
+                    <Image
+                      source={{ uri: formData.image_url }}
+                      style={styles.imagePreview}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => setFormData({ ...formData, image_url: '' })}
+                    >
+                      <Ionicons name="close-circle" size={24} color="#ef4444" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.uploadPlaceholder}>
+                    <Ionicons name="image-outline" size={48} color={theme.colors.textSecondary} />
+                    <Text style={styles.uploadPlaceholderText}>No image uploaded</Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={handleImageUpload}
+                  disabled={uploadingImage}
+                >
+                  {uploadingImage ? (
+                    <ActivityIndicator color={theme.colors.white} />
+                  ) : (
+                    <>
+                      <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.white} />
+                      <Text style={styles.uploadButtonText}>
+                        {formData.image_url ? 'Change Image' : 'Upload Image'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -519,6 +589,59 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   saveButtonText: {
+    color: theme.colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Image upload styles
+  imageSection: {
+    marginBottom: 20,
+  },
+  imagePreviewContainer: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+  imagePreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: theme.colors.border,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: theme.colors.white,
+    borderRadius: 12,
+  },
+  uploadPlaceholder: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: theme.colors.background,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  uploadPlaceholderText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    gap: 8,
+  },
+  uploadButtonText: {
     color: theme.colors.white,
     fontSize: 14,
     fontWeight: '600',
