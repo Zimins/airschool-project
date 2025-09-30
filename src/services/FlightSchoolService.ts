@@ -31,7 +31,6 @@ export class FlightSchoolService {
           *,
           programs (*)
         `)
-        .eq('is_active', true)
         .order('rating', { ascending: false });
 
       if (error) {

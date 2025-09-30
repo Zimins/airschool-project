@@ -75,9 +75,9 @@ For development and testing, the following accounts are available:
 - Password: `testpassword123`
 
 **Administrator:**
-- Email: `admin@airschool.com`
-- Password: `admin123`
-
+- Email: `test@gmail.com`
+- Password: `123!@#`
+- 
 **Note**: Make sure to disable email confirmations in your Supabase Auth settings for development, or manually confirm these users in the Supabase dashboard.
 
 ## Deployment

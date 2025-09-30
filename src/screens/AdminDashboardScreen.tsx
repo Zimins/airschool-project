@@ -17,6 +17,9 @@ import { theme } from '../styles/theme';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { createClient } from '@supabase/supabase-js';
 import SchoolsManagementScreen from './admin/SchoolsManagementScreen';
+import StudyMaterialsManagementScreen from './admin/StudyMaterialsManagementScreen';
+import UsersManagementScreen from './admin/UsersManagementScreen';
+import CommunityPostsManagementScreen from './admin/CommunityPostsManagementScreen';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Admin'>;
 
@@ -29,7 +32,7 @@ const AdminDashboardScreen = () => {
     totalSchools: 0,
     totalMaterials: 0,
     totalUsers: 0,
-    totalReviews: 0,
+    totalPosts: 0,
   });
 
   // Initialize Supabase client
@@ -66,18 +69,16 @@ const AdminDashboardScreen = () => {
           .from('users')
           .select('*', { count: 'exact', head: true });
 
-        // Calculate total reviews from flight_schools review_count
-        const { data: schoolsData } = await supabase
-          .from('flight_schools')
-          .select('review_count');
-
-        const totalReviews = schoolsData?.reduce((sum, school) => sum + (school.review_count || 0), 0) || 0;
+        // Fetch total community posts
+        const { count: postsCount } = await supabase
+          .from('community_posts')
+          .select('*', { count: 'exact', head: true });
 
         setStats({
           totalSchools: schoolsCount || 0,
           totalMaterials: materialsCount || 0,
           totalUsers: usersCount || 0,
-          totalReviews: totalReviews,
+          totalPosts: postsCount || 0,
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
@@ -86,7 +87,7 @@ const AdminDashboardScreen = () => {
           totalSchools: 6,
           totalMaterials: 5,
           totalUsers: 0,
-          totalReviews: 0,
+          totalPosts: 0,
         });
       } finally {
         setLoading(false);
@@ -109,15 +110,15 @@ const AdminDashboardScreen = () => {
     { id: 'dashboard', label: 'Dashboard', icon: 'grid-outline' },
     { id: 'schools', label: 'Flight Schools', icon: 'airplane-outline' },
     { id: 'materials', label: 'Study Materials', icon: 'book-outline' },
+    { id: 'posts', label: 'Community Posts', icon: 'chatbubbles-outline' },
     { id: 'users', label: 'Users', icon: 'people-outline' },
-    { id: 'settings', label: 'Settings', icon: 'settings-outline' },
   ];
 
   const statsCards = [
     { label: 'Total Schools', value: stats.totalSchools.toString(), icon: 'business-outline', color: '#4CAF50' },
     { label: 'Study Materials', value: stats.totalMaterials.toString(), icon: 'document-text-outline', color: '#2196F3' },
+    { label: 'Community Posts', value: stats.totalPosts.toString(), icon: 'chatbubbles-outline', color: '#9C27B0' },
     { label: 'Total Users', value: stats.totalUsers.toString(), icon: 'people-outline', color: '#FF9800' },
-    { label: 'Reviews', value: stats.totalReviews.toString(), icon: 'star-outline', color: '#9C27B0' },
   ];
 
   const handleMenuPress = (menuId: string) => {
@@ -128,6 +129,12 @@ const AdminDashboardScreen = () => {
     switch (selectedMenu) {
       case 'schools':
         return <SchoolsManagementScreen onBack={() => setSelectedMenu('dashboard')} />;
+      case 'materials':
+        return <StudyMaterialsManagementScreen onBack={() => setSelectedMenu('dashboard')} />;
+      case 'posts':
+        return <CommunityPostsManagementScreen onBack={() => setSelectedMenu('dashboard')} />;
+      case 'users':
+        return <UsersManagementScreen onBack={() => setSelectedMenu('dashboard')} />;
       case 'dashboard':
       default:
         return (
@@ -141,40 +148,17 @@ const AdminDashboardScreen = () => {
               {loading ? (
                 <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 50 }} />
               ) : (
-                <>
-                  <View style={styles.statsGrid}>
-                    {statsCards.map((stat, index) => (
-                      <View key={index} style={styles.statCard}>
-                        <View style={[styles.statIconContainer, { backgroundColor: stat.color + '20' }]}>
-                          <Ionicons name={stat.icon as any} size={24} color={stat.color} />
-                        </View>
-                        <Text style={styles.statValue}>{stat.value}</Text>
-                        <Text style={styles.statLabel}>{stat.label}</Text>
+                <View style={styles.statsGrid}>
+                  {statsCards.map((stat, index) => (
+                    <View key={index} style={styles.statCard}>
+                      <View style={[styles.statIconContainer, { backgroundColor: stat.color + '20' }]}>
+                        <Ionicons name={stat.icon as any} size={24} color={stat.color} />
                       </View>
-                    ))}
-                  </View>
-
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Recent Activity</Text>
-                    <View style={styles.activityList}>
-                      <View style={styles.activityItem}>
-                        <Ionicons name="person-add-outline" size={20} color={theme.colors.textSecondary} />
-                        <Text style={styles.activityText}>New user registration: john.doe@example.com</Text>
-                        <Text style={styles.activityTime}>2 hours ago</Text>
-                      </View>
-                      <View style={styles.activityItem}>
-                        <Ionicons name="star-outline" size={20} color={theme.colors.textSecondary} />
-                        <Text style={styles.activityText}>New review for Sky High Aviation</Text>
-                        <Text style={styles.activityTime}>5 hours ago</Text>
-                      </View>
-                      <View style={styles.activityItem}>
-                        <Ionicons name="document-text-outline" size={20} color={theme.colors.textSecondary} />
-                        <Text style={styles.activityText}>Study material updated: PPL Guide</Text>
-                        <Text style={styles.activityTime}>1 day ago</Text>
-                      </View>
+                      <Text style={styles.statValue}>{stat.value}</Text>
+                      <Text style={styles.statLabel}>{stat.label}</Text>
                     </View>
-                  </View>
-                </>
+                  ))}
+                </View>
               )}
             </ScrollView>
           </View>
@@ -368,7 +352,7 @@ const styles = StyleSheet.create({
     marginHorizontal: -10,
   },
   statCard: {
-    width: '23%',
+    width: '31%',
     backgroundColor: theme.colors.white,
     padding: 20,
     margin: '1%',
@@ -398,37 +382,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.textSecondary,
     marginTop: 5,
-  },
-  section: {
-    marginTop: 30,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: 15,
-  },
-  activityList: {
-    backgroundColor: theme.colors.white,
-    borderRadius: 12,
-    padding: 20,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  activityText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 14,
-    color: theme.colors.text,
-  },
-  activityTime: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
   },
   // Mobile styles
   mobileContainer: {

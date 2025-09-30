@@ -6,7 +6,8 @@ import FlightSchoolDetailScreen from '../screens/FlightSchoolDetailScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
-// Temporarily removed screens for e2e testing
+import CommunityBoardScreen from '../screens/CommunityBoardScreen';
+import StudyBoardScreen from '../screens/StudyBoardScreen';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -14,6 +15,8 @@ export type RootStackParamList = {
   Login: undefined;
   Signup: undefined;
   Admin: undefined;
+  CommunityBoard: undefined;
+  StudyBoard: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -50,7 +53,16 @@ const AppNavigator = () => {
         component={AdminDashboardScreen}
         options={{ title: 'Admin Dashboard' }}
       />
-      {/* Temporarily removed board screens for e2e testing */}
+      <Stack.Screen
+        name="CommunityBoard"
+        component={CommunityBoardScreen}
+        options={{ title: 'Community Board' }}
+      />
+      <Stack.Screen
+        name="StudyBoard"
+        component={StudyBoardScreen}
+        options={{ title: 'Study Board' }}
+      />
     </Stack.Navigator>
   );
 };

@@ -5,6 +5,7 @@ export const theme = {
     accent: '#10b981',       // Emerald Green
     background: '#fafafa',   // Off-white
     surface: '#ffffff',      // White
+    white: '#ffffff',        // Pure White
     text: '#0f172a',         // Near Black
     textSecondary: '#64748b', // Slate Gray
     border: '#e2e8f0',       // Light border
