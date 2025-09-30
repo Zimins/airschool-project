@@ -264,6 +264,8 @@ const styles = StyleSheet.create({
   },
   categoriesContainer: {
     paddingHorizontal: theme.spacing.lg,
+    maxHeight: 60,
+    marginBottom: theme.spacing.md,
   },
   categoryButton: {
     paddingHorizontal: theme.spacing.lg,

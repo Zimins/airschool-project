@@ -351,6 +351,7 @@ const styles = StyleSheet.create({
   },
   categoriesContainer: {
     marginBottom: 16,
+    maxHeight: 50,
   },
   categoryChip: {
     paddingHorizontal: 16,
