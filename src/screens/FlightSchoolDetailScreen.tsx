@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,18 @@ import {
   Dimensions,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { mockFlightSchools, mockReviews, getRatingDistribution } from '../data/mockData';
+import { mockReviews, getRatingDistribution } from '../data/mockData';
 import { theme } from '../styles/theme';
 import ReviewCard from '../components/ReviewCard';
 import ReviewModal from '../components/ReviewModal';
+import { FlightSchoolService } from '../services/FlightSchoolService';
+import { FlightSchool, Review } from '../types/flightSchool';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlightSchoolDetail'>;
 
@@ -28,19 +31,79 @@ const FlightSchoolDetailScreen = () => {
   const route = useRoute<Props['route']>();
   const navigation = useNavigation<Props['navigation']>();
   const { schoolId } = route.params;
-  
-  const school = mockFlightSchools.find(s => s.id === schoolId);
-  const reviews = mockReviews.filter(r => r.schoolId === schoolId);
-  const ratingDistribution = getRatingDistribution(schoolId);
-  
+
+  const [school, setSchool] = useState<FlightSchool | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('programs');
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [flightSchoolService] = useState(() => new FlightSchoolService());
 
-  if (!school) {
+  useEffect(() => {
+    loadSchoolData();
+  }, [schoolId]);
+
+  const loadSchoolData = async () => {
+    console.log('🔄 Loading school data for ID:', schoolId);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const schoolData = await flightSchoolService.getFlightSchoolById(schoolId);
+
+      if (!schoolData) {
+        setError('School not found');
+        setSchool(null);
+      } else {
+        console.log('✅ School data loaded:', schoolData.name);
+        setSchool(schoolData);
+
+        // Try to load reviews from Supabase
+        try {
+          const reviewsData = await flightSchoolService.getReviewsForSchool(schoolId);
+          setReviews(reviewsData);
+          console.log(`✅ Loaded ${reviewsData.length} reviews`);
+        } catch (reviewError) {
+          console.warn('⚠️ Could not load reviews, using mock data:', reviewError);
+          // Fallback to mock reviews if Supabase reviews fail
+          const mockReviewsData = mockReviews.filter(r => r.schoolId === schoolId);
+          setReviews(mockReviewsData);
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error loading school data:', err);
+      setError('Failed to load school information');
+      setSchool(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const ratingDistribution = school ? getRatingDistribution(schoolId) : { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.loadingText}>Loading school details...</Text>
+      </View>
+    );
+  }
+
+  if (error || !school) {
     return (
       <View style={styles.errorContainer}>
-        <Text>School not found.</Text>
+        <Ionicons name="warning-outline" size={48} color={theme.colors.error} />
+        <Text style={styles.errorText}>{error || 'School not found'}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={20} color="white" />
+          <Text style={styles.retryButtonText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -249,10 +312,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  loadingText: {
+    marginTop: theme.spacing.md,
+    fontSize: theme.fontSize.base,
+    color: theme.colors.textSecondary,
+  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  errorText: {
+    marginTop: theme.spacing.md,
+    fontSize: theme.fontSize.lg,
+    fontWeight: '600',
+    color: theme.colors.error,
+    textAlign: 'center',
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginTop: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: theme.fontSize.base,
+    fontWeight: '600',
   },
   heroSection: {
     height: 250,
