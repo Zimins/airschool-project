@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -83,6 +84,35 @@ const HomeScreen = () => {
 
   const handleSchoolPress = (schoolId: string) => {
     navigation.navigate('FlightSchoolDetail', { schoolId });
+  };
+
+  const handleSocialMediaPress = async (platform: 'instagram' | 'tiktok') => {
+    const urls = {
+      instagram: 'https://www.instagram.com/preflightnet',
+      tiktok: 'https://www.tiktok.com/@preflightnet',
+    };
+
+    const url = urls[platform];
+
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        if (Platform.OS === 'web') {
+          window.alert(`Cannot open ${platform} URL`);
+        } else {
+          Alert.alert('Error', `Cannot open ${platform} URL`);
+        }
+      }
+    } catch (error) {
+      console.error(`Error opening ${platform}:`, error);
+      if (Platform.OS === 'web') {
+        window.alert(`Failed to open ${platform}`);
+      } else {
+        Alert.alert('Error', `Failed to open ${platform}`);
+      }
+    }
   };
 
   const handleRoleChange = async () => {
@@ -224,7 +254,7 @@ const HomeScreen = () => {
               )}
             </View>
           </View>
-          
+
           <Text style={styles.headerSubtitle}>
             Find the perfect partner to realize your aviation dreams
           </Text>
@@ -249,14 +279,14 @@ const HomeScreen = () => {
       </View>
 
       <View style={styles.boardButtonsContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.boardButton}
           onPress={() => navigation.navigate('CommunityBoard')}
         >
           <Ionicons name="chatbubbles-outline" size={24} color={theme.colors.primary} />
           <Text style={styles.boardButtonText}>Community Board</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.boardButton}
           onPress={() => navigation.navigate('StudyBoard')}
         >
@@ -275,6 +305,47 @@ const HomeScreen = () => {
     </View>
   );
 
+  const renderFooter = () => (
+    <View style={styles.footerWrapper}>
+      <Text style={styles.footerTitle}>Follow Us</Text>
+      <Text style={styles.footerSubtitle}>Stay connected for the latest updates</Text>
+
+      <View style={styles.socialButtonsContainer}>
+        <TouchableOpacity
+          style={styles.socialButton}
+          onPress={() => handleSocialMediaPress('instagram')}
+        >
+          <LinearGradient
+            colors={['#833AB4', '#C13584', '#E1306C', '#FD1D1D', '#F56040', '#FCAF45']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.socialButtonGradient}
+          >
+            <Ionicons name="logo-instagram" size={28} color="white" />
+            <Text style={styles.socialButtonText}>Instagram</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.socialButton}
+          onPress={() => handleSocialMediaPress('tiktok')}
+        >
+          <LinearGradient
+            colors={['#000000', '#010101']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.socialButtonGradient}
+          >
+            <Ionicons name="logo-tiktok" size={28} color="white" />
+            <Text style={styles.socialButtonText}>TikTok</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.footerCopyright}>© 2025 PreflightSchool. All rights reserved.</Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -287,6 +358,7 @@ const HomeScreen = () => {
           />
         )}
         ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderFooter}
         ListEmptyComponent={
           isLoading ? (
             <View style={styles.listLoadingContainer}>
@@ -518,6 +590,57 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: theme.spacing.lg,
+  },
+  footerWrapper: {
+    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.xxxl,
+    paddingHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    alignItems: 'center',
+  },
+  footerTitle: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
+  },
+  footerSubtitle: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xl,
+  },
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+    width: '100%',
+    maxWidth: 600,
+  },
+  socialButton: {
+    flex: 1,
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    ...theme.shadow.md,
+  },
+  socialButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  },
+  socialButtonText: {
+    color: 'white',
+    fontSize: theme.fontSize.base,
+    fontWeight: '600',
+  },
+  footerCopyright: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
   },
 });
 
