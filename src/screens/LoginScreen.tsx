@@ -52,10 +52,10 @@ const LoginScreen = () => {
     console.log('🔴 Login button pressed!');
     console.log('Email:', email);
     console.log('Password:', password ? '***' : '(empty)');
-    
+
     // Clear previous error
     setErrorMessage('');
-    
+
     if (!email.trim()) {
       console.log('❌ Email is empty');
       setErrorMessage('Please enter your email');
@@ -70,7 +70,7 @@ const LoginScreen = () => {
     console.log('✅ Starting login process...');
     setLoading(true);
     setErrorMessage('');
-    
+
     try {
       console.log('📡 Calling login...');
       await actions.login({ email: email.trim(), password });
@@ -88,28 +88,20 @@ const LoginScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Back Button */}
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
-        
+
         <View style={styles.header}>
           <Text style={styles.title}>Welcome!</Text>
-          <Text style={styles.subtitle}>
-            Sign in with your AirSchool account
-          </Text>
+          <Text style={styles.subtitle}>Sign in with your PreflightSchool account</Text>
         </View>
 
         <View style={styles.form}>
@@ -141,13 +133,8 @@ const LoginScreen = () => {
                 returnKeyType="go"
                 testID="password-input"
               />
-              <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Text style={styles.eyeIcon}>
-                  {showPassword ? '👁' : '👁‍🗨'}
-                </Text>
+              <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(!showPassword)}>
+                <Text style={styles.eyeIcon}>{showPassword ? '👁' : '👁‍🗨'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -163,15 +150,12 @@ const LoginScreen = () => {
           </TouchableOpacity>
 
           <Pressable
-            style={[
-              styles.loginButton,
-              (loading || state.isLoading) && styles.loginButtonDisabled
-            ]}
+            style={[styles.loginButton, (loading || state.isLoading) && styles.loginButtonDisabled]}
             onPress={handleLogin}
             disabled={loading || state.isLoading}
             testID="login-button"
           >
-            {(loading || state.isLoading) ? (
+            {loading || state.isLoading ? (
               <View style={styles.loadingContainer} testID="loading-indicator">
                 <ActivityIndicator color="white" />
                 <Text style={[styles.loginButtonText, { marginLeft: 8 }]}>Signing in...</Text>
@@ -283,10 +267,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
     justifyContent: 'center',
     minHeight: 48,
-    ...(Platform.OS === 'web' && {
-      cursor: 'pointer',
-      userSelect: 'none',
-    } as any),
+    ...(Platform.OS === 'web' &&
+      ({
+        cursor: 'pointer',
+        userSelect: 'none',
+      } as any)),
   },
   loginButtonDisabled: {
     opacity: 0.6,
