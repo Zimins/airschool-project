@@ -8,124 +8,99 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   StatusBar,
+  Pressable,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { theme } from '../styles/theme';
-import { useAuth } from '../context/AuthContext';
-import { UserModel } from '../models/User';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Signup'>;
+import { theme } from '../src/styles/theme';
+import { useAlert } from '../src/contexts/AlertContext';
+import { useAuth } from '../src/contexts/AuthContext';
 
 const SignupScreen = () => {
-  const navigation = useNavigation<NavigationProp>();
-  const { state, actions } = useAuth();
+  const router = useRouter();
+  const { showAlert } = useAlert();
+  const { signUp } = useAuth();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    general: '',
-  });
-
-  // Handle authentication state changes
-  React.useEffect(() => {
-    if (state.isAuthenticated && !state.isLoading) {
-      const homeRoute = state.session?.role === 'admin' ? 'Admin' : 'Home';
-      navigation.navigate(homeRoute as never);
-    }
-  }, [state.isAuthenticated, state.isLoading, state.session?.role, navigation]);
-
-  // Use auth error from context
-  React.useEffect(() => {
-    if (state.error) {
-      setErrors(prev => ({ ...prev, general: state.error! }));
-    }
-  }, [state.error]);
-
-  const clearErrors = () => {
-    setErrors({
-      email: '',
-      password: '',
-      confirmPassword: '',
-      general: '',
-    });
-    actions.clearError();
-  };
-
-  const validateForm = (): boolean => {
-    clearErrors();
-    let isValid = true;
-    const newErrors = {
-      email: '',
-      password: '',
-      confirmPassword: '',
-      general: '',
-    };
-
-    // Validate email
-    try {
-      UserModel.validateEmail(email);
-    } catch (error) {
-      newErrors.email = error instanceof Error ? error.message : 'Invalid email';
-      isValid = false;
-    }
-
-    // Validate password
-    try {
-      UserModel.validatePassword(password);
-    } catch (error) {
-      newErrors.password = error instanceof Error ? error.message : 'Invalid password';
-      isValid = false;
-    }
-
-    // Validate password confirmation
-    if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-      isValid = false;
-    }
-
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
-  };
 
   const handleSignup = async () => {
-    if (loading || state.isLoading) return;
-
-    if (!validateForm()) {
+    if (!name.trim()) {
+      showAlert({
+        title: 'Name Required',
+        message: 'Please enter your name',
+        buttons: [{ text: 'OK' }]
+      });
+      return;
+    }
+    if (!email.trim()) {
+      showAlert({
+        title: 'Email Required',
+        message: 'Please enter your email address',
+        buttons: [{ text: 'OK' }]
+      });
+      return;
+    }
+    if (!password.trim()) {
+      showAlert({
+        title: 'Password Required',
+        message: 'Please enter your password',
+        buttons: [{ text: 'OK' }]
+      });
+      return;
+    }
+    if (password.length < 6) {
+      showAlert({
+        title: 'Weak Password',
+        message: 'Password must be at least 6 characters long',
+        buttons: [{ text: 'OK' }]
+      });
+      return;
+    }
+    if (password !== confirmPassword) {
+      showAlert({
+        title: 'Password Mismatch',
+        message: 'Passwords do not match',
+        buttons: [{ text: 'OK' }]
+      });
+      return;
+    }
+    if (!agreeToTerms) {
+      showAlert({
+        title: 'Terms & Conditions',
+        message: 'Please agree to the terms and conditions',
+        buttons: [{ text: 'OK' }]
+      });
       return;
     }
 
     setLoading(true);
-
+    
     try {
-      await actions.register({
-        email: email.trim(),
-        password,
-        role: 'user', // New users are regular users by default
+      // Create account with Supabase
+      await signUp(email, password, { name });
+      
+      showAlert({
+        title: 'Sign Up Successful!',
+        message: 'Your account has been created and you are now logged in!',
+        buttons: [
+          { text: 'OK', onPress: () => router.replace('/') }
+        ]
       });
-      // Navigation will be handled in useEffect above
-    } catch (error) {
-      console.error('Signup error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Signup failed';
-      setErrors(prev => ({ ...prev, general: errorMessage }));
+    } catch (error: any) {
+      // Show error message
+      showAlert({
+        title: 'Sign Up Failed',
+        message: error.message || 'An error occurred during sign up. Please try again.',
+        buttons: [{ text: 'OK' }]
+      });
     } finally {
       setLoading(false);
     }
@@ -144,7 +119,7 @@ const SignupScreen = () => {
         {/* Back Button */}
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
@@ -152,7 +127,7 @@ const SignupScreen = () => {
         <View style={styles.header}>
           <Text style={styles.title}>Sign Up</Text>
           <Text style={styles.subtitle}>
-            Start your flight dream with AirSchool
+            Start your flying dreams with AirSchool
           </Text>
         </View>
 
@@ -165,38 +140,32 @@ const SignupScreen = () => {
               value={name}
               onChangeText={setName}
               placeholderTextColor={theme.colors.textSecondary}
-              testID="name-input"
             />
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email</Text>
             <TextInput
-              style={[styles.input, errors.email && styles.inputError]}
+              style={styles.input}
               placeholder="Enter your email"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               placeholderTextColor={theme.colors.textSecondary}
-              testID="email-input"
             />
-            {errors.email ? (
-              <Text style={styles.fieldErrorText}>{errors.email}</Text>
-            ) : null}
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
-                style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
+                style={[styles.input, styles.passwordInput]}
                 placeholder="Enter your password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 placeholderTextColor={theme.colors.textSecondary}
-                testID="password-input"
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -207,22 +176,18 @@ const SignupScreen = () => {
                 </Text>
               </TouchableOpacity>
             </View>
-            {errors.password ? (
-              <Text style={styles.fieldErrorText}>{errors.password}</Text>
-            ) : null}
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Confirm Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
-                style={[styles.input, styles.passwordInput, errors.confirmPassword && styles.inputError]}
-                placeholder="Re-enter your password"
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Enter your password again"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirmPassword}
                 placeholderTextColor={theme.colors.textSecondary}
-                testID="confirm-password-input"
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -233,9 +198,6 @@ const SignupScreen = () => {
                 </Text>
               </TouchableOpacity>
             </View>
-            {errors.confirmPassword ? (
-              <Text style={styles.fieldErrorText}>{errors.confirmPassword}</Text>
-            ) : null}
           </View>
 
           <TouchableOpacity
@@ -251,29 +213,22 @@ const SignupScreen = () => {
             </Text>
           </TouchableOpacity>
 
-          {errors.general ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{errors.general}</Text>
-            </View>
-          ) : null}
-
-          <TouchableOpacity 
-            style={[styles.signupButton, (loading || !agreeToTerms) && styles.signupButtonDisabled]} 
-            onPress={handleSignup}
-            disabled={loading || !agreeToTerms}
-            testID="signup-button"
+          <Pressable 
+            style={[styles.signupButton, loading && styles.signupButtonDisabled]} 
+            onPress={() => !loading && handleSignup()}
+            disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
               <Text style={styles.signupButtonText}>Sign Up</Text>
             )}
-          </TouchableOpacity>
+          </Pressable>
 
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>Sign In</Text>
+            <TouchableOpacity onPress={() => router.push('/login')}>
+              <Text style={styles.loginLink}>Log In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -393,24 +348,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
   },
-  signupButtonDisabled: {
-    opacity: 0.6,
-  },
   signupButtonText: {
     color: 'white',
     fontSize: theme.fontSize.base,
     fontWeight: 'bold',
   },
-  errorContainer: {
-    backgroundColor: '#ffebee',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.sm,
-    marginBottom: theme.spacing.md,
-  },
-  errorText: {
-    color: '#c62828',
-    fontSize: theme.fontSize.sm,
-    textAlign: 'center',
+  signupButtonDisabled: {
+    opacity: 0.7,
   },
   loginContainer: {
     flexDirection: 'row',
@@ -425,15 +369,6 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: theme.fontSize.base,
     fontWeight: '600',
-  },
-  inputError: {
-    borderColor: '#c62828',
-    borderWidth: 2,
-  },
-  fieldErrorText: {
-    color: '#c62828',
-    fontSize: theme.fontSize.sm,
-    marginTop: theme.spacing.xs,
   },
 });
 

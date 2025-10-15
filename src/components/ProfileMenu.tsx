@@ -37,48 +37,24 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({
   const [showRoleConfirm, setShowRoleConfirm] = React.useState(false);
 
   const handleLogout = async () => {
-    console.log('🔴 ProfileMenu: handleLogout called');
-
-    // Web에서는 window.confirm 사용
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Are you sure you want to logout?');
-      console.log('🔴 ProfileMenu: User confirmation:', confirmed);
-
-      if (confirmed) {
-        console.log('🔴 ProfileMenu: User confirmed logout');
-        try {
-          await onLogout();
-          console.log('✅ ProfileMenu: onLogout completed');
-        } catch (error) {
-          console.error('❌ ProfileMenu: onLogout error:', error);
-        }
-      }
-    } else {
-      // Native에서는 Alert 사용
-      Alert.alert(
-        'Logout',
-        'Are you sure you want to logout?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            onClose();
+            await onLogout();
           },
-          {
-            text: 'Logout',
-            style: 'destructive',
-            onPress: async () => {
-              console.log('🔴 ProfileMenu: User confirmed logout');
-              try {
-                await onLogout();
-                console.log('✅ ProfileMenu: onLogout completed');
-              } catch (error) {
-                console.error('❌ ProfileMenu: onLogout error:', error);
-              }
-            },
-          },
-        ]
-      );
-    }
+        },
+      ]
+    );
   };
 
   const handleRoleToggle = async () => {
@@ -120,14 +96,8 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({
     setShowRoleConfirm(false);
   };
 
-  const getInitials = (user: User | null) => {
-    if (user?.nickname) {
-      return user.nickname.substring(0, 2).toUpperCase();
-    }
-    if (user?.email) {
-      return user.email.split('@')[0].substring(0, 2).toUpperCase();
-    }
-    return 'U';
+  const getInitials = (email: string) => {
+    return email.split('@')[0].substring(0, 2).toUpperCase();
   };
 
   return (
@@ -148,12 +118,12 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({
             <View style={styles.header}>
               <View style={styles.avatarContainer}>
                 <Text style={styles.avatarText}>
-                  {getInitials(user)}
+                  {user?.email ? getInitials(user.email) : 'U'}
                 </Text>
               </View>
               <View style={styles.userInfo}>
                 <Text style={styles.userName}>
-                  {user?.nickname || user?.email?.split('@')[0] || 'User'}
+                  {user?.email?.split('@')[0] || 'User'}
                 </Text>
                 <Text style={styles.userEmail}>{user?.email || ''}</Text>
                 {isAdmin && (

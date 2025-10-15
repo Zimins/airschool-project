@@ -56,29 +56,11 @@ export class AuthService {
       // Get user role from user metadata or default to 'user'
       const userRole = data.user.user_metadata?.role || 'user';
 
-      // Fetch additional user data from profiles table (including nickname)
-      let nickname: string | undefined;
-      try {
-        const { data: profileData, error: profileError } = await this.supabase
-          .from('profiles')
-          .select('nickname')
-          .eq('id', data.user.id)
-          .single();
-
-        if (!profileError && profileData) {
-          nickname = profileData.nickname;
-        }
-      } catch (profileError) {
-        console.warn('Failed to fetch profile data:', profileError);
-        // Continue with login even if profile fetch fails
-      }
-
-      // Create our internal session format with nickname
+      // Create our internal session format
       const session: UserSession = {
         userId: data.user.id,
         email: data.user.email || normalizedEmail,
         role: userRole as 'user' | 'admin',
-        nickname, // Add nickname to session
         loginTimestamp: Date.now(),
         token: data.session.access_token,
         supabaseSession: data.session // Store the full Supabase session
@@ -122,37 +104,6 @@ export class AuthService {
       if (error) {
         console.error('Supabase Auth signup error:', error?.message);
         throw new Error(error?.message || 'Failed to create user');
-      }
-
-      // If user was created successfully and we have a nickname, upsert profile
-      // Wait briefly for any database triggers to complete, then upsert
-      if (data.user && userData.nickname) {
-        try {
-          console.log('🔵 Waiting for trigger to complete...');
-          // Wait 1 second for trigger to create initial profile record
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          console.log('🔵 Upserting profile with nickname:', userData.nickname);
-          const { data: upsertData, error: profileError } = await this.supabase
-            .from('profiles')
-            .upsert({
-              id: data.user.id,
-              nickname: userData.nickname,
-              updated_at: new Date().toISOString(),
-            }, {
-              onConflict: 'id' // Update if profile already exists
-            })
-            .select();
-
-          if (profileError) {
-            console.error('❌ Failed to upsert profile:', profileError.message, profileError);
-          } else {
-            console.log('✅ Profile upserted successfully:', upsertData);
-          }
-        } catch (profileError) {
-          console.error('❌ Profile upsert error:', profileError);
-          // Continue without throwing - user account is already created
-        }
       }
 
       // Return the full Supabase Auth response so caller can handle different scenarios

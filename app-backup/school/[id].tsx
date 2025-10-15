@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,100 +10,32 @@ import {
   Dimensions,
   Platform,
   StatusBar,
-  ActivityIndicator,
 } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { mockReviews, getRatingDistribution } from '../data/mockData';
-import { theme } from '../styles/theme';
-import ReviewCard from '../components/ReviewCard';
-import ReviewModal from '../components/ReviewModal';
-import { FlightSchoolService } from '../services/FlightSchoolService';
-import { FlightSchool, Review } from '../types/flightSchool';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'FlightSchoolDetail'>;
+import { mockFlightSchools, mockReviews, getRatingDistribution } from '../../src/data/mockData';
+import { theme } from '../../src/styles/theme';
+import ReviewCard from '../../src/components/ReviewCard';
+import ReviewModal from '../../src/components/ReviewModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 const FlightSchoolDetailScreen = () => {
-  const route = useRoute<Props['route']>();
-  const navigation = useNavigation<Props['navigation']>();
-  const { schoolId } = route.params;
-
-  const [school, setSchool] = useState<FlightSchool | null>(null);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { id: schoolId } = useLocalSearchParams();
+  const router = useRouter();
+  
+  const school = mockFlightSchools.find(s => s.id === schoolId);
+  const reviews = mockReviews.filter(r => r.schoolId === schoolId);
+  const ratingDistribution = getRatingDistribution(schoolId as string);
+  
   const [activeTab, setActiveTab] = useState('programs');
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [flightSchoolService] = useState(() => new FlightSchoolService());
 
-  useEffect(() => {
-    loadSchoolData();
-  }, [schoolId]);
-
-  const loadSchoolData = async () => {
-    console.log('🔄 Loading school data for ID:', schoolId);
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const schoolData = await flightSchoolService.getFlightSchoolById(schoolId);
-
-      if (!schoolData) {
-        setError('School not found');
-        setSchool(null);
-      } else {
-        console.log('✅ School data loaded:', schoolData.name);
-        setSchool(schoolData);
-
-        // Try to load reviews from Supabase
-        try {
-          const reviewsData = await flightSchoolService.getReviewsForSchool(schoolId);
-          setReviews(reviewsData);
-          console.log(`✅ Loaded ${reviewsData.length} reviews`);
-        } catch (reviewError) {
-          console.warn('⚠️ Could not load reviews, using mock data:', reviewError);
-          // Fallback to mock reviews if Supabase reviews fail
-          const mockReviewsData = mockReviews.filter(r => r.schoolId === schoolId);
-          setReviews(mockReviewsData);
-        }
-      }
-    } catch (err) {
-      console.error('❌ Error loading school data:', err);
-      setError('Failed to load school information');
-      setSchool(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const ratingDistribution = school ? getRatingDistribution(schoolId) : { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Loading school details...</Text>
-      </View>
-    );
-  }
-
-  if (error || !school) {
+  if (!school) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="warning-outline" size={48} color={theme.colors.error} />
-        <Text style={styles.errorText}>{error || 'School not found'}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={20} color="white" />
-          <Text style={styles.retryButtonText}>Go Back</Text>
-        </TouchableOpacity>
+        <Text>School not found.</Text>
       </View>
     );
   }
@@ -131,11 +63,12 @@ const FlightSchoolDetailScreen = () => {
       case 'programs':
         return (
           <View style={styles.tabContent}>
-            <Text style={styles.sectionTitle}>Available Programs</Text>
+            <Text style={styles.sectionTitle}>Programs Offered</Text>
             {school.programs.map((program) => (
               <View key={program.id} style={styles.programCard}>
                 <Text style={styles.programName}>{program.name}</Text>
                 <Text style={styles.programDuration}>Duration: {program.duration}</Text>
+                <Text style={styles.programPrice}>{program.price}</Text>
                 <Text style={styles.programDescription}>{program.description}</Text>
               </View>
             ))}
@@ -145,7 +78,7 @@ const FlightSchoolDetailScreen = () => {
       case 'facilities':
         return (
           <View style={styles.tabContent}>
-            <Text style={styles.sectionTitle}>Facility Gallery</Text>
+            <Text style={styles.sectionTitle}>Facilities Gallery</Text>
             <FlatList
               horizontal
               data={school.gallery}
@@ -255,7 +188,7 @@ const FlightSchoolDetailScreen = () => {
         {/* Back Button */}
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
@@ -300,7 +233,7 @@ const FlightSchoolDetailScreen = () => {
       <ReviewModal
         visible={reviewModalVisible}
         onClose={() => setReviewModalVisible(false)}
-        schoolId={schoolId}
+        schoolId={schoolId as string}
         schoolName={school.name}
       />
     </ScrollView>
@@ -312,45 +245,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background,
-  },
-  loadingText: {
-    marginTop: theme.spacing.md,
-    fontSize: theme.fontSize.base,
-    color: theme.colors.textSecondary,
-  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: theme.spacing.lg,
-  },
-  errorText: {
-    marginTop: theme.spacing.md,
-    fontSize: theme.fontSize.lg,
-    fontWeight: '600',
-    color: theme.colors.error,
-    textAlign: 'center',
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    marginTop: theme.spacing.lg,
-    gap: theme.spacing.sm,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontSize: theme.fontSize.base,
-    fontWeight: '600',
   },
   heroSection: {
     height: 250,
@@ -469,6 +367,12 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
+  },
+  programPrice: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.sm,
   },
   programDescription: {
     fontSize: theme.fontSize.base,

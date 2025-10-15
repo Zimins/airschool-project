@@ -7,7 +7,6 @@ export interface User {
   id: string;
   email: string;
   role: 'user' | 'admin';
-  nickname?: string; // Optional nickname from profiles table
   created_at: string;
   last_login: string | null;
   is_active: boolean;
@@ -16,7 +15,6 @@ export interface User {
 export interface UserCreateData {
   email: string;
   password: string;
-  nickname?: string; // Optional nickname for profile creation
   role?: 'user' | 'admin';
 }
 
@@ -29,7 +27,6 @@ export interface UserSession {
   userId: string;
   email: string;
   role: 'user' | 'admin';
-  nickname?: string; // Optional nickname from profiles table
   loginTimestamp: number;
   token: string;
   supabaseSession?: any; // Store the full Supabase session for advanced features

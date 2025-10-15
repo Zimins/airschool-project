@@ -122,6 +122,7 @@ users (
 - `crypto-js`: Password hashing
 - `@react-native-async-storage/async-storage`: Session storage
 - `jest`: Testing framework
+- `@testing-library/react-native`: Component testing
 - `@testing-library/jest-dom`: DOM testing utilities
 
 ### Key Components:

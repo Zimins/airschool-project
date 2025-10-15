@@ -48,43 +48,29 @@ const UsersManagementScreen: React.FC<UsersManagementScreenProps> = ({ onBack })
     try {
       setLoading(true);
 
-      // Note: auth.admin.listUsers() requires service_role key, not anon key
-      // This will only work if you're using a backend API or Edge Function
-      // For now, we'll try to fetch from the users table directly
-
-      const { data: usersData, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch users from Supabase Auth
+      const { data: { users: authUsers }, error } = await supabase.auth.admin.listUsers();
 
       if (error) {
-        console.error('Error fetching users from table:', error);
-
-        // If users table doesn't exist or returns error, show empty state
-        console.warn('Unable to fetch users. The users table may not be accessible or the admin API requires a backend.');
-        Alert.alert(
-          'Info',
-          'User management requires additional backend setup. Using Supabase Auth admin API from frontend is not secure.'
-        );
-        setUsers([]);
+        console.error('Error fetching users:', error);
+        Alert.alert('Error', 'Failed to load users. Make sure you have admin privileges.');
         return;
       }
 
-      // Transform database users to our User interface
-      const transformedUsers: User[] = (usersData || []).map(user => ({
+      // Transform auth users to our User interface
+      const transformedUsers: User[] = (authUsers || []).map(user => ({
         id: user.id,
         email: user.email || 'N/A',
-        role: user.role || 'user',
+        role: user.user_metadata?.role || 'user',
         created_at: user.created_at,
-        last_sign_in_at: user.last_login || undefined,
-        email_confirmed_at: user.created_at, // Approximate since we don't have this in users table
+        last_sign_in_at: user.last_sign_in_at || undefined,
+        email_confirmed_at: user.email_confirmed_at || undefined,
       }));
 
       setUsers(transformedUsers);
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', 'Failed to load users');
-      setUsers([]);
     } finally {
       setLoading(false);
     }

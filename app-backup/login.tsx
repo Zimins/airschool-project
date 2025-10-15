@@ -5,86 +5,78 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Pressable,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
-  StatusBar,
+  StatusBar, 
+  Pressable,
   ActivityIndicator,
-  Button,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { theme } from '../styles/theme';
-import { useAuth } from '../context/AuthContext';
-import WebButton from '../components/WebButton';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
+import { theme } from '../src/styles/theme';
+import { useAlert } from '../src/contexts/AlertContext';
+import { useAuth } from '../src/contexts/AuthContext';
 
 const LoginScreen = () => {
-  const navigation = useNavigation<NavigationProp>();
-  const { state, actions } = useAuth();
+  const router = useRouter();
+  const { showAlert } = useAlert();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-
-  // Handle authentication state changes
-  React.useEffect(() => {
-    if (state.isAuthenticated && !state.isLoading) {
-      const homeRoute = state.session?.role === 'admin' ? 'Admin' : 'Home';
-      navigation.navigate(homeRoute as never);
-    }
-  }, [state.isAuthenticated, state.isLoading, state.session?.role, navigation]);
-
-  // Use auth error from context
-  React.useEffect(() => {
-    if (state.error) {
-      setErrorMessage(state.error);
-    }
-  }, [state.error]);
 
   const handleLogin = async () => {
-    console.log('🔴 Login button pressed!');
-    console.log('Email:', email);
-    console.log('Password:', password ? '***' : '(empty)');
-    
-    // Clear previous error
-    setErrorMessage('');
-    
     if (!email.trim()) {
-      console.log('❌ Email is empty');
-      setErrorMessage('Please enter your email');
-      return;
-    }
-    if (!password.trim()) {
-      console.log('❌ Password is empty');
-      setErrorMessage('Please enter your password');
+      showAlert({
+        title: 'Email Required',
+        message: 'Please enter your email address',
+        buttons: [{ text: 'OK' }]
+      });
       return;
     }
 
-    console.log('✅ Starting login process...');
+    if (!password.trim()) {
+      showAlert({
+        title: 'Password Required',
+        message: 'Please enter your password',
+        buttons: [{ text: 'OK' }]
+      });
+      return;
+    }
+
     setLoading(true);
-    setErrorMessage('');
     
     try {
-      console.log('📡 Calling login...');
-      await actions.login({ email: email.trim(), password });
-      console.log('✅ Login successful!');
-      // Navigation will be handled by auth state change in useEffect
-      const homeRoute = state.session?.role === 'admin' ? 'Admin' : 'Home';
-      navigation.navigate(homeRoute as never);
+      // 실제 Supabase 인증 시도
+      await signIn(email, password);
+      
+      showAlert({
+        title: 'Login Successful!',
+        message: 'Welcome back!',
+        buttons: [
+          { text: 'OK', onPress: () => router.replace('/') }
+        ]
+      });
     } catch (error: any) {
-      console.error('❌ Login failed:', error.message);
-      const errorMsg = error.message || 'Invalid email or password';
-      setErrorMessage(errorMsg);
+      // 로그인 실패 시 에러 표시
+      showAlert({
+        title: 'Login Failed',
+        message: error.message || 'Invalid email or password. Please try again.',
+        buttons: [{ text: 'OK' }]
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSocialLogin = (provider: string) => {
+    showAlert({
+      title: `${provider} Login`,
+      message: 'Not supported in prototype.',
+      buttons: [{ text: 'OK' }]
+    });
   };
 
   return (
@@ -100,7 +92,7 @@ const LoginScreen = () => {
         {/* Back Button */}
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
@@ -108,7 +100,7 @@ const LoginScreen = () => {
         <View style={styles.header}>
           <Text style={styles.title}>Welcome!</Text>
           <Text style={styles.subtitle}>
-            Sign in with your AirSchool account
+            Log in to your AirSchool account
           </Text>
         </View>
 
@@ -117,13 +109,12 @@ const LoginScreen = () => {
             <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder="Enter your email"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               placeholderTextColor={theme.colors.textSecondary}
-              testID="email-input"
             />
           </View>
 
@@ -132,14 +123,11 @@ const LoginScreen = () => {
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
-                placeholder="Password"
+                placeholder="Enter your password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 placeholderTextColor={theme.colors.textSecondary}
-                onSubmitEditing={handleLogin}
-                returnKeyType="go"
-                testID="password-input"
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -152,38 +140,47 @@ const LoginScreen = () => {
             </View>
           </View>
 
-          {errorMessage ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{errorMessage}</Text>
-            </View>
-          ) : null}
-
           <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
           </TouchableOpacity>
 
-          <Pressable
-            style={[
-              styles.loginButton,
-              (loading || state.isLoading) && styles.loginButtonDisabled
-            ]}
-            onPress={handleLogin}
-            disabled={loading || state.isLoading}
-            testID="login-button"
+          <Pressable 
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+            onPress={() => !loading && handleLogin()}
+            disabled={loading}
           >
-            {(loading || state.isLoading) ? (
-              <View style={styles.loadingContainer} testID="loading-indicator">
-                <ActivityIndicator color="white" />
-                <Text style={[styles.loginButtonText, { marginLeft: 8 }]}>Signing in...</Text>
-              </View>
+            {loading ? (
+              <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.loginButtonText}>Login</Text>
+              <Text style={styles.loginButtonText}>Log In</Text>
             )}
           </Pressable>
 
+          <View style={styles.dividerContainer}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.divider} />
+          </View>
+
+          <View style={styles.socialButtons}>
+            <TouchableOpacity
+              style={[styles.socialButton, styles.googleButton]}
+              onPress={() => handleSocialLogin('Google')}
+            >
+              <Text style={styles.socialButtonText}>🔵 Continue with Google</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.socialButton, styles.facebookButton]}
+              onPress={() => handleSocialLogin('Facebook')}
+            >
+              <Text style={styles.socialButtonText}>📘 Continue with Facebook</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.signupContainer}>
             <Text style={styles.signupText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+            <TouchableOpacity onPress={() => router.push('/signup')}>
               <Text style={styles.signupLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
@@ -281,43 +278,56 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
-    justifyContent: 'center',
-    minHeight: 48,
-    ...(Platform.OS === 'web' && {
-      cursor: 'pointer',
-      userSelect: 'none',
-    } as any),
-  },
-  loginButtonDisabled: {
-    opacity: 0.6,
-  },
-  loginButtonPressed: {
-    opacity: 0.8,
   },
   loginButtonText: {
     color: 'white',
     fontSize: theme.fontSize.base,
     fontWeight: 'bold',
   },
-  loginButtonContainer: {
+  loginButtonDisabled: {
+    opacity: 0.7,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: theme.spacing.lg,
   },
-  errorContainer: {
-    backgroundColor: '#ffebee',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.sm,
-    marginBottom: theme.spacing.md,
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border,
   },
-  errorText: {
-    color: '#c62828',
+  dividerText: {
+    marginHorizontal: theme.spacing.md,
+    color: theme.colors.textSecondary,
     fontSize: theme.fontSize.sm,
-    textAlign: 'center',
+  },
+  socialButtons: {
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+  },
+  socialButton: {
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  googleButton: {
+    backgroundColor: 'white',
+  },
+  facebookButton: {
+    backgroundColor: 'white',
+  },
+  socialButtonText: {
+    fontSize: theme.fontSize.base,
+    fontWeight: '600',
+    color: theme.colors.text,
   },
   signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: theme.spacing.xl,
   },
   signupText: {
     color: theme.colors.textSecondary,
@@ -327,11 +337,6 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: theme.fontSize.base,
     fontWeight: '600',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
 

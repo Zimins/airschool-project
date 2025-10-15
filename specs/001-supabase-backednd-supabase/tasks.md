@@ -44,7 +44,7 @@
 ## Phase 3.1: Setup & Dependencies
 
 - [ ] **T001** Install authentication dependencies: `npm install @supabase/supabase-js crypto-js @react-native-async-storage/async-storage`
-- [ ] **T002** Install testing dependencies: `npm install --save-dev jest @testing-library/jest-dom @testing-library/user-event`
+- [ ] **T002** Install testing dependencies: `npm install --save-dev jest @testing-library/react-native @testing-library/jest-dom @testing-library/user-event`
 - [ ] **T003** [P] Configure Jest for React Native Web in `package.json` and create `jest.config.js`
 - [ ] **T004** Create Supabase project directory structure: `supabase/migrations/` and `supabase/seed.sql`
 - [ ] **T005** Create environment variables template `.env.example` with Supabase configuration keys

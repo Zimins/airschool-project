@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ProtectedRoute } from '../components/ProtectedRoute';
 import HomeScreen from '../screens/HomeScreen';
 import FlightSchoolDetailScreen from '../screens/FlightSchoolDetailScreen';
 import LoginScreen from '../screens/LoginScreen';
