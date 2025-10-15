@@ -119,6 +119,7 @@ const SignupScreen = () => {
       await actions.register({
         email: email.trim(),
         password,
+        nickname: name.trim() || undefined, // Use name as nickname if provided
         role: 'user', // New users are regular users by default
       });
       // Navigation will be handled in useEffect above
@@ -132,28 +133,20 @@ const SignupScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Back Button */}
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
-        
+
         <View style={styles.header}>
           <Text style={styles.title}>Sign Up</Text>
-          <Text style={styles.subtitle}>
-            Start your flight dream with AirSchool
-          </Text>
+          <Text style={styles.subtitle}>Start your flight dream with PreflightSchool</Text>
         </View>
 
         <View style={styles.form}>
@@ -181,9 +174,7 @@ const SignupScreen = () => {
               placeholderTextColor={theme.colors.textSecondary}
               testID="email-input"
             />
-            {errors.email ? (
-              <Text style={styles.fieldErrorText}>{errors.email}</Text>
-            ) : null}
+            {errors.email ? <Text style={styles.fieldErrorText}>{errors.email}</Text> : null}
           </View>
 
           <View style={styles.inputContainer}>
@@ -198,18 +189,11 @@ const SignupScreen = () => {
                 placeholderTextColor={theme.colors.textSecondary}
                 testID="password-input"
               />
-              <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Text style={styles.eyeIcon}>
-                  {showPassword ? '👁' : '👁‍🗨'}
-                </Text>
+              <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(!showPassword)}>
+                <Text style={styles.eyeIcon}>{showPassword ? '👁' : '👁‍🗨'}</Text>
               </TouchableOpacity>
             </View>
-            {errors.password ? (
-              <Text style={styles.fieldErrorText}>{errors.password}</Text>
-            ) : null}
+            {errors.password ? <Text style={styles.fieldErrorText}>{errors.password}</Text> : null}
           </View>
 
           <View style={styles.inputContainer}>
@@ -224,27 +208,15 @@ const SignupScreen = () => {
                 placeholderTextColor={theme.colors.textSecondary}
                 testID="confirm-password-input"
               />
-              <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                <Text style={styles.eyeIcon}>
-                  {showConfirmPassword ? '👁' : '👁‍🗨'}
-                </Text>
+              <TouchableOpacity style={styles.eyeButton} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                <Text style={styles.eyeIcon}>{showConfirmPassword ? '👁' : '👁‍🗨'}</Text>
               </TouchableOpacity>
             </View>
-            {errors.confirmPassword ? (
-              <Text style={styles.fieldErrorText}>{errors.confirmPassword}</Text>
-            ) : null}
+            {errors.confirmPassword ? <Text style={styles.fieldErrorText}>{errors.confirmPassword}</Text> : null}
           </View>
 
-          <TouchableOpacity
-            style={styles.termsContainer}
-            onPress={() => setAgreeToTerms(!agreeToTerms)}
-          >
-            <View style={styles.checkbox}>
-              {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
-            </View>
+          <TouchableOpacity style={styles.termsContainer} onPress={() => setAgreeToTerms(!agreeToTerms)}>
+            <View style={styles.checkbox}>{agreeToTerms && <Text style={styles.checkmark}>✓</Text>}</View>
             <Text style={styles.termsText}>
               I agree to the <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
               <Text style={styles.termsLink}>Privacy Policy</Text>
@@ -257,17 +229,13 @@ const SignupScreen = () => {
             </View>
           ) : null}
 
-          <TouchableOpacity 
-            style={[styles.signupButton, (loading || !agreeToTerms) && styles.signupButtonDisabled]} 
+          <TouchableOpacity
+            style={[styles.signupButton, (loading || !agreeToTerms) && styles.signupButtonDisabled]}
             onPress={handleSignup}
             disabled={loading || !agreeToTerms}
             testID="signup-button"
           >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.signupButtonText}>Sign Up</Text>
-            )}
+            {loading ? <ActivityIndicator color="white" /> : <Text style={styles.signupButtonText}>Sign Up</Text>}
           </TouchableOpacity>
 
           <View style={styles.loginContainer}>

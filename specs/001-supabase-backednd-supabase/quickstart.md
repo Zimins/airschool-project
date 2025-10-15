@@ -17,7 +17,7 @@ Before testing the authentication system, ensure:
 1. **Install Dependencies**
    ```bash
    npm install @supabase/supabase-js crypto-js @react-native-async-storage/async-storage
-   npm install --save-dev jest @testing-library/react-native @testing-library/jest-dom
+   npm install --save-dev jest @testing-library/jest-dom
    ```
 
 2. **Configure Supabase**
