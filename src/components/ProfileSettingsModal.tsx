@@ -15,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../styles/theme';
 import { User, UserSession } from '../types/auth';
-import { useAuth } from '../context/AuthContext';
 import { AuthService } from '../services/AuthService';
 
 interface ProfileSettingsModalProps {
@@ -32,7 +31,6 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   session,
 }) => {
   const navigation = useNavigation();
-  const { actions } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
@@ -77,11 +75,8 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
     try {
       const authService = new AuthService();
 
-      // Delete user account
+      // Delete user account (this also clears the session)
       await authService.deleteAccount(session);
-
-      // Logout
-      await actions.logout();
 
       // Close modals
       setShowDeleteConfirm(false);

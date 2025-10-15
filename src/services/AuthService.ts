@@ -437,39 +437,27 @@ export class AuthService {
       const { error: deleteError } = await this.supabase.rpc('delete_user');
 
       if (deleteError) {
-        // If RPC fails, try the direct approach
-        console.warn('RPC delete failed, trying direct deletion:', deleteError);
-
-        // Use Supabase's updateUser to delete the account
-        // Note: This requires the user to be authenticated
-        const { error } = await this.supabase.auth.updateUser({
-          data: { deleted: true }
-        });
-
-        if (error) {
-          throw error;
-        }
+        console.error('Failed to delete account:', deleteError);
+        throw new Error('Failed to delete account. Please try again.');
       }
 
-      // Sign out from Supabase
-      await this.supabase.auth.signOut();
+      console.log('✅ Account deleted from database');
 
-      // Clear local session
+      // Clear local session only (no need to call signOut since user is already deleted)
       await SessionManager.clearSession();
 
       console.log('✅ Account deletion completed');
     } catch (error) {
       console.error('Delete account error:', error);
 
-      // Even if deletion fails, sign out the user
+      // If deletion fails, try to clean up session anyway
       try {
-        await this.supabase.auth.signOut();
         await SessionManager.clearSession();
-      } catch (signOutError) {
-        console.error('Sign out error:', signOutError);
+      } catch (clearError) {
+        console.error('Session clear error:', clearError);
       }
 
-      throw new Error('Failed to delete account. Please try again or contact support.');
+      throw error instanceof Error ? error : new Error('Failed to delete account. Please try again or contact support.');
     }
   }
 }
