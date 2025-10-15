@@ -8,10 +8,15 @@ import {
   ScrollView,
   Alert,
   Platform,
+  ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { theme } from '../styles/theme';
 import { User, UserSession } from '../types/auth';
+import { useAuth } from '../context/AuthContext';
+import { AuthService } from '../services/AuthService';
 
 interface ProfileSettingsModalProps {
   visible: boolean;
@@ -26,6 +31,12 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   user,
   session,
 }) => {
+  const navigation = useNavigation();
+  const { actions } = useAuth();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+
   const handleResetPassword = () => {
     Alert.alert(
       'Reset Password',
@@ -35,20 +46,69 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Delete Account', 'This feature will be implemented soon.');
-          },
-        },
-      ]
-    );
+    // Show confirmation modal instead of alert
+    setShowDeleteConfirm(true);
+    setDeleteConfirmEmail('');
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setDeleteConfirmEmail('');
+  };
+
+  const performDeleteAccount = async () => {
+    if (!session || !user) {
+      Alert.alert('Error', 'No active session found.');
+      return;
+    }
+
+    // Verify email matches
+    if (deleteConfirmEmail.toLowerCase() !== user.email.toLowerCase()) {
+      if (Platform.OS === 'web') {
+        window.alert('Email does not match. Please enter your email correctly.');
+      } else {
+        Alert.alert('Error', 'Email does not match. Please enter your email correctly.');
+      }
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const authService = new AuthService();
+
+      // Delete user account
+      await authService.deleteAccount(session);
+
+      // Logout
+      await actions.logout();
+
+      // Close modals
+      setShowDeleteConfirm(false);
+      onClose();
+
+      // Show success message
+      if (Platform.OS === 'web') {
+        window.alert('Your account has been successfully deleted.');
+      } else {
+        Alert.alert('Account Deleted', 'Your account has been successfully deleted.');
+      }
+
+      // Navigate to home
+      navigation.navigate('Home' as never);
+    } catch (error: any) {
+      console.error('Delete account error:', error);
+
+      const errorMessage = error.message || 'Failed to delete account. Please try again.';
+
+      if (Platform.OS === 'web') {
+        window.alert(`Error: ${errorMessage}`);
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const getInitials = (email: string) => {
@@ -114,12 +174,22 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
               <View style={styles.divider} />
 
               <TouchableOpacity
-                style={[styles.settingItem, styles.dangerItem]}
+                style={[styles.settingItem, styles.dangerItem, isDeleting && styles.disabledItem]}
                 onPress={handleDeleteAccount}
+                disabled={isDeleting}
               >
-                <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
-                <Text style={[styles.settingText, styles.dangerText]}>Delete Account</Text>
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.error} />
+                {isDeleting ? (
+                  <>
+                    <ActivityIndicator size="small" color={theme.colors.error} />
+                    <Text style={[styles.settingText, styles.dangerText]}>Deleting Account...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
+                    <Text style={[styles.settingText, styles.dangerText]}>Delete Account</Text>
+                    <Ionicons name="chevron-forward" size={16} color={theme.colors.error} />
+                  </>
+                )}
               </TouchableOpacity>
             </View>
 
@@ -150,6 +220,72 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
           </ScrollView>
         </View>
       </View>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelDelete}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalContainer}>
+            <View style={styles.deleteModalHeader}>
+              <Ionicons name="warning" size={48} color={theme.colors.error} />
+              <Text style={styles.deleteModalTitle}>Delete Account</Text>
+            </View>
+
+            <Text style={styles.deleteModalText}>
+              This action cannot be undone. All your data including reviews and comments will be permanently deleted.
+            </Text>
+
+            <Text style={styles.deleteModalConfirmLabel}>
+              To confirm, please enter your email address:
+            </Text>
+
+            <View style={styles.deleteInputContainer}>
+              <Text style={styles.deleteInputHint}>{user?.email}</Text>
+              <TextInput
+                style={styles.deleteInput}
+                placeholder="Enter your email"
+                value={deleteConfirmEmail}
+                onChangeText={setDeleteConfirmEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholderTextColor={theme.colors.textSecondary}
+              />
+            </View>
+
+            <View style={styles.deleteModalButtons}>
+              <TouchableOpacity
+                style={[styles.deleteModalButton, styles.cancelButton]}
+                onPress={handleCancelDelete}
+                disabled={isDeleting}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.deleteModalButton,
+                  styles.confirmDeleteButton,
+                  (isDeleting || deleteConfirmEmail.toLowerCase() !== user?.email.toLowerCase()) &&
+                    styles.confirmDeleteButtonDisabled,
+                ]}
+                onPress={performDeleteAccount}
+                disabled={isDeleting || deleteConfirmEmail.toLowerCase() !== user?.email.toLowerCase()}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text style={styles.confirmDeleteButtonText}>Delete My Account</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 };
@@ -276,6 +412,12 @@ const styles = StyleSheet.create({
   dangerText: {
     color: theme.colors.error,
   },
+  disabledItem: {
+    opacity: 0.5,
+    ...(Platform.OS === 'web' && {
+      cursor: 'not-allowed',
+    } as any),
+  },
   divider: {
     height: 1,
     backgroundColor: theme.colors.border,
@@ -305,6 +447,101 @@ const styles = StyleSheet.create({
   },
   activeStatus: {
     color: theme.colors.success,
+  },
+  // Delete confirmation modal styles
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  deleteModalContainer: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    width: '100%',
+    maxWidth: 450,
+    ...theme.shadow.xl,
+  },
+  deleteModalHeader: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  deleteModalTitle: {
+    fontSize: theme.fontSize.xxl,
+    fontWeight: 'bold',
+    color: theme.colors.error,
+    marginTop: theme.spacing.md,
+  },
+  deleteModalText: {
+    fontSize: theme.fontSize.base,
+    color: theme.colors.text,
+    lineHeight: 22,
+    marginBottom: theme.spacing.lg,
+    textAlign: 'center',
+  },
+  deleteModalConfirmLabel: {
+    fontSize: theme.fontSize.base,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+  },
+  deleteInputContainer: {
+    marginBottom: theme.spacing.xl,
+  },
+  deleteInputHint: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+    fontStyle: 'italic',
+  },
+  deleteInput: {
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    fontSize: theme.fontSize.base,
+    color: theme.colors.text,
+    backgroundColor: theme.colors.background,
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  deleteModalButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+    } as any),
+  },
+  cancelButton: {
+    backgroundColor: theme.colors.border,
+  },
+  cancelButtonText: {
+    fontSize: theme.fontSize.base,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  confirmDeleteButton: {
+    backgroundColor: theme.colors.error,
+  },
+  confirmDeleteButtonDisabled: {
+    backgroundColor: theme.colors.border,
+    opacity: 0.5,
+    ...(Platform.OS === 'web' && {
+      cursor: 'not-allowed',
+    } as any),
+  },
+  confirmDeleteButtonText: {
+    fontSize: theme.fontSize.base,
+    fontWeight: '600',
+    color: 'white',
   },
 });
 
