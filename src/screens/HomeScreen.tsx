@@ -26,6 +26,7 @@ import FlightSchoolCard from '../components/FlightSchoolCard';
 import ProfileMenu from '../components/ProfileMenu';
 import ProfileSettingsModal from '../components/ProfileSettingsModal';
 import { useAuth } from '../context/AuthContext';
+import { usePasswordReset } from '../../App';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -33,6 +34,7 @@ const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { state, actions } = useAuth();
   const { user, session } = state;
+  const { isFromPasswordReset, setIsFromPasswordReset } = usePasswordReset();
   const isAdmin = session?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +45,15 @@ const HomeScreen = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [flightSchoolService] = useState(() => new FlightSchoolService());
+
+  // Auto-open profile settings when coming from password reset email
+  useEffect(() => {
+    if (isFromPasswordReset && session) {
+      console.log('🔑 Opening profile settings from password reset email');
+      setShowProfileSettings(true);
+      // Don't reset the flag here - let ProfileSettingsModal handle it
+    }
+  }, [isFromPasswordReset, session]);
 
   useEffect(() => {
     loadFlightSchools();

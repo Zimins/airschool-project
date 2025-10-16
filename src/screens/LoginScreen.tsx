@@ -139,15 +139,18 @@ const LoginScreen = () => {
             </View>
           </View>
 
+          <TouchableOpacity
+            style={styles.forgotPassword}
+            onPress={() => navigation.navigate('ForgotPassword')}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+          </TouchableOpacity>
+
           {errorMessage ? (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>{errorMessage}</Text>
             </View>
           ) : null}
-
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
-          </TouchableOpacity>
 
           <Pressable
             style={[styles.loginButton, (loading || state.isLoading) && styles.loginButtonDisabled]}

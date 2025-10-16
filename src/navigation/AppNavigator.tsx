@@ -4,6 +4,7 @@ import HomeScreen from '../screens/HomeScreen';
 import FlightSchoolDetailScreen from '../screens/FlightSchoolDetailScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import CommunityBoardScreen from '../screens/CommunityBoardScreen';
 import StudyBoardScreen from '../screens/StudyBoardScreen';
@@ -13,6 +14,7 @@ export type RootStackParamList = {
   FlightSchoolDetail: { schoolId: string };
   Login: undefined;
   Signup: undefined;
+  ForgotPassword: undefined;
   Admin: undefined;
   CommunityBoard: undefined;
   StudyBoard: undefined;
@@ -46,6 +48,11 @@ const AppNavigator = () => {
         name="Signup"
         component={SignupScreen}
         options={{ title: 'Sign Up' }}
+      />
+      <Stack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
+        options={{ title: 'Forgot Password' }}
       />
       <Stack.Screen
         name="Admin"

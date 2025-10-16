@@ -4,21 +4,20 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { 
-  User, 
-  UserSession, 
-  UserLoginData, 
-  UserCreateData, 
+import {
+  User,
+  UserSession,
+  UserLoginData,
+  UserCreateData,
   DatabaseUser,
   AuthError,
-  AuthErrorType 
+  AuthErrorType
 } from '../types/auth';
 import { UserModel, UserValidationError } from '../models/User';
-import { CryptoUtils } from '../utils/crypto';
 import { SessionManager } from '../utils/session';
 
 export class AuthService {
-  private supabase: SupabaseClient;
+  public supabase: SupabaseClient;
   
   constructor() {
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -316,6 +315,7 @@ export class AuthService {
 
   /**
    * Change user password (authenticated users only)
+   * Uses Supabase Auth to update password
    */
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     const session = await this.getCurrentSession();
@@ -327,41 +327,32 @@ export class AuthService {
     UserModel.validatePassword(newPassword);
 
     try {
-      // Get current user data
-      const { data: userData, error: fetchError } = await this.supabase
-        .from('users')
-        .select('id, password_hash')
-        .eq('id', session.userId)
-        .single();
+      // First, verify current password by trying to sign in
+      const { data: signInData, error: signInError } = await this.supabase.auth.signInWithPassword({
+        email: session.email,
+        password: currentPassword,
+      });
 
-      if (fetchError || !userData) {
-        throw new Error('User not found');
-      }
-
-      // Verify current password
-      const isValidCurrentPassword = CryptoUtils.verifyPassword(
-        currentPassword,
-        userData.password_hash
-      );
-
-      if (!isValidCurrentPassword) {
+      if (signInError || !signInData.user) {
         throw new Error('Current password is incorrect');
       }
 
-      // Hash new password
-      const newPasswordHash = CryptoUtils.hashPassword(newPassword);
-
-      // Update password in database
-      const { error: updateError } = await this.supabase
-        .from('users')
-        .update({ password_hash: newPasswordHash })
-        .eq('id', session.userId);
+      // If current password is correct, update to new password
+      const { error: updateError } = await this.supabase.auth.updateUser({
+        password: newPassword,
+      });
 
       if (updateError) {
-        throw new Error('Failed to update password');
+        console.error('Supabase update password error:', updateError?.message);
+        throw new Error(updateError?.message || 'Failed to update password');
       }
+
+      console.log('✅ Password updated successfully');
     } catch (error) {
-      throw error;
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to change password');
     }
   }
 
@@ -460,4 +451,31 @@ export class AuthService {
       throw error instanceof Error ? error : new Error('Failed to delete account. Please try again or contact support.');
     }
   }
+
+  /**
+   * Send password reset email
+   * Uses Supabase Auth to send password reset link
+   */
+  async resetPasswordEmail(email: string): Promise<void> {
+    try {
+      const normalizedEmail = UserModel.normalizeEmail(email);
+
+      const { error } = await this.supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: `${window.location.origin}`,
+      });
+
+      if (error) {
+        console.error('Supabase reset password error:', error?.message);
+        throw new Error(error?.message || 'Failed to send reset email');
+      }
+
+      console.log('✅ Password reset email sent successfully');
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to send reset email');
+    }
+  }
+
 }

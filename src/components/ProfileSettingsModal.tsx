@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { theme } from '../styles/theme';
 import { User, UserSession } from '../types/auth';
 import { AuthService } from '../services/AuthService';
+import { usePasswordReset } from '../../App';
 
 interface ProfileSettingsModalProps {
   visible: boolean;
@@ -31,16 +32,145 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   session,
 }) => {
   const navigation = useNavigation();
+  const { isFromPasswordReset, setIsFromPasswordReset } = usePasswordReset();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
 
+  // Password change states
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+  // Track if this password change session is from email reset
+  const [isPasswordResetSession, setIsPasswordResetSession] = useState(false);
+
+  // Auto-open password modal when coming from password reset email
+  useEffect(() => {
+    if (visible && isFromPasswordReset && session) {
+      console.log('🔑 Auto-opening password change modal from email reset');
+      setShowPasswordModal(true);
+      setIsPasswordResetSession(true); // Mark this session as from email reset
+      setIsFromPasswordReset(false); // Reset the global flag
+    }
+  }, [visible, isFromPasswordReset, session, setIsFromPasswordReset]);
+
   const handleResetPassword = () => {
-    Alert.alert(
-      'Reset Password',
-      'This feature will be implemented soon.',
-      [{ text: 'OK' }]
-    );
+    setShowPasswordModal(true);
+    setIsPasswordResetSession(false); // Manual reset is not from email
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setPasswordError('');
+  };
+
+  const handleCancelPasswordChange = () => {
+    setShowPasswordModal(false);
+    setIsPasswordResetSession(false); // Reset session flag
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setPasswordError('');
+  };
+
+  const handleConfirmPasswordChange = async () => {
+    setPasswordError('');
+
+    console.log('🔑 Password change - isPasswordResetSession:', isPasswordResetSession);
+
+    // Validation - skip current password if from password reset email
+    if (!isPasswordResetSession) {
+      if (!currentPassword || !newPassword || !confirmNewPassword) {
+        setPasswordError('Please fill in all fields');
+        return;
+      }
+    } else {
+      if (!newPassword || !confirmNewPassword) {
+        setPasswordError('Please fill in all password fields');
+        return;
+      }
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters long');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    if (!isPasswordResetSession && currentPassword === newPassword) {
+      setPasswordError('New password must be different from current password');
+      return;
+    }
+
+    if (!session) {
+      setPasswordError('Session expired. Please login again.');
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      const authService = new AuthService();
+
+      // Only verify current password if NOT from password reset email
+      if (!isPasswordResetSession) {
+        console.log('🔐 Verifying current password...');
+        const { data: signInData, error: signInError } = await authService.supabase.auth.signInWithPassword({
+          email: session.email,
+          password: currentPassword,
+        });
+
+        if (signInError || !signInData.user) {
+          setPasswordError('Current password is incorrect');
+          setIsChangingPassword(false);
+          return;
+        }
+      } else {
+        console.log('✅ Skipping current password verification (from email reset)');
+      }
+
+      // Update to new password
+      console.log('🔄 Updating password...');
+      const { error: updateError } = await authService.supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        console.error('Update password error:', updateError);
+        setPasswordError(updateError.message || 'Failed to update password');
+        setIsChangingPassword(false);
+        return;
+      }
+
+      // Success
+      console.log('✅ Password updated successfully');
+      setShowPasswordModal(false);
+      setIsPasswordResetSession(false); // Reset session flag
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+
+      if (Platform.OS === 'web') {
+        window.alert('Password changed successfully!');
+      } else {
+        Alert.alert('Success', 'Password changed successfully!');
+      }
+    } catch (error: any) {
+      console.error('Change password error:', error);
+      setPasswordError(error.message || 'Failed to change password');
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -215,6 +345,146 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
           </ScrollView>
         </View>
       </View>
+
+      {/* Password Change Modal */}
+      <Modal
+        visible={showPasswordModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelPasswordChange}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalContainer}>
+            <View style={styles.deleteModalHeader}>
+              <Ionicons name="key" size={48} color={theme.colors.primary} />
+              <Text style={[styles.deleteModalTitle, { color: theme.colors.text }]}>Change Password</Text>
+            </View>
+
+            <Text style={[styles.deleteModalText, { textAlign: 'left', marginBottom: theme.spacing.md }]}>
+              {isPasswordResetSession
+                ? 'Choose your new password.'
+                : 'Enter your current password and choose a new password.'}
+            </Text>
+
+            {/* Current Password - only show if NOT from password reset email */}
+            {!isPasswordResetSession && (
+              <View style={styles.passwordInputGroup}>
+                <Text style={styles.passwordLabel}>Current Password</Text>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Enter current password"
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    secureTextEntry={!showCurrentPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    placeholderTextColor={theme.colors.textSecondary}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                  >
+                    <Ionicons
+                      name={showCurrentPassword ? 'eye-off' : 'eye'}
+                      size={20}
+                      color={theme.colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* New Password */}
+            <View style={styles.passwordInputGroup}>
+              <Text style={styles.passwordLabel}>New Password</Text>
+              <View style={styles.passwordInputWrapper}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Enter new password (min 6 characters)"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showNewPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholderTextColor={theme.colors.textSecondary}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowNewPassword(!showNewPassword)}
+                >
+                  <Ionicons
+                    name={showNewPassword ? 'eye-off' : 'eye'}
+                    size={20}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Confirm New Password */}
+            <View style={styles.passwordInputGroup}>
+              <Text style={styles.passwordLabel}>Confirm New Password</Text>
+              <View style={styles.passwordInputWrapper}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Re-enter new password"
+                  value={confirmNewPassword}
+                  onChangeText={setConfirmNewPassword}
+                  secureTextEntry={!showConfirmNewPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholderTextColor={theme.colors.textSecondary}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                >
+                  <Ionicons
+                    name={showConfirmNewPassword ? 'eye-off' : 'eye'}
+                    size={20}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Error Message */}
+            {passwordError ? (
+              <View style={styles.passwordErrorContainer}>
+                <Ionicons name="alert-circle" size={16} color={theme.colors.error} />
+                <Text style={styles.passwordErrorText}>{passwordError}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.deleteModalButtons}>
+              <TouchableOpacity
+                style={[styles.deleteModalButton, styles.cancelButton]}
+                onPress={handleCancelPasswordChange}
+                disabled={isChangingPassword}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.deleteModalButton,
+                  styles.confirmPasswordButton,
+                  isChangingPassword && styles.confirmDeleteButtonDisabled,
+                ]}
+                onPress={handleConfirmPasswordChange}
+                disabled={isChangingPassword}
+              >
+                {isChangingPassword ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text style={styles.confirmDeleteButtonText}>Change Password</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -537,6 +807,54 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.base,
     fontWeight: '600',
     color: 'white',
+  },
+  // Password change modal styles
+  passwordInputGroup: {
+    marginBottom: theme.spacing.md,
+  },
+  passwordLabel: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
+  },
+  passwordInputWrapper: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    paddingRight: 48,
+    fontSize: theme.fontSize.base,
+    color: theme.colors.text,
+    backgroundColor: theme.colors.background,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: theme.spacing.md,
+    padding: theme.spacing.xs,
+  },
+  passwordErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffebee',
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: theme.spacing.md,
+  },
+  passwordErrorText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.error,
+    marginLeft: theme.spacing.xs,
+    flex: 1,
+  },
+  confirmPasswordButton: {
+    backgroundColor: theme.colors.primary,
   },
 });
 
