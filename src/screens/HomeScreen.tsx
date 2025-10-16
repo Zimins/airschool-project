@@ -276,10 +276,6 @@ const HomeScreen = () => {
             placeholderTextColor={theme.colors.textSecondary}
           />
         </View>
-        <TouchableOpacity style={styles.filterButton}>
-          <Ionicons name="options-outline" size={20} color="white" />
-          <Text style={styles.filterButtonText}>Filter</Text>
-        </TouchableOpacity>
       </View>
 
       <View style={styles.boardButtonsContainer}>
@@ -520,22 +516,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: theme.fontSize.base,
     color: theme.colors.text,
-  },
-  filterButton: {
-    height: 56,
-    paddingHorizontal: theme.spacing.lg,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.xl,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    ...theme.shadow.lg,
-  },
-  filterButtonText: {
-    color: 'white',
-    fontSize: theme.fontSize.base,
-    fontWeight: '600',
   },
   boardButtonsContainer: {
     flexDirection: 'row',

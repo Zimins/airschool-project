@@ -205,10 +205,20 @@ const AdminDashboardScreen = () => {
               ))}
             </View>
 
-            <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-              <Ionicons name="log-out-outline" size={20} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </TouchableOpacity>
+            <View style={styles.sidebarFooter}>
+              <TouchableOpacity
+                style={styles.homeButton}
+                onPress={() => navigation.navigate('Home')}
+              >
+                <Ionicons name="home-outline" size={20} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.homeButtonText}>Go to Main Page</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+                <Ionicons name="log-out-outline" size={20} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.signOutText}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {renderContent()}
@@ -310,13 +320,29 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '600',
   },
-  signOutButton: {
+  sidebarFooter: {
+    marginTop: 'auto',
+  },
+  homeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
     marginTop: 20,
+  },
+  homeButtonText: {
+    color: 'rgba(255,255,255,0.8)',
+    marginLeft: 12,
+    fontSize: 14,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    marginTop: 8,
   },
   signOutText: {
     color: theme.colors.white,
