@@ -28,6 +28,7 @@ import ProfileSettingsModal from '../components/ProfileSettingsModal';
 import { useAuth } from '../context/AuthContext';
 import { usePasswordReset } from '../../App';
 import { AuthService } from '../services/AuthService';
+import { useAppSettings } from '../context/AppSettingsContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -36,6 +37,7 @@ const HomeScreen = () => {
   const { state, actions } = useAuth();
   const { user, session } = state;
   const { isFromPasswordReset } = usePasswordReset();
+  const { settings } = useAppSettings();
   const isAdmin = session?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -238,7 +240,7 @@ const HomeScreen = () => {
         <View style={styles.headerContent}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.headerTitle}>PreflightSchool</Text>
+              <Text style={styles.headerTitle}>{settings.app_name}</Text>
               <Text style={styles.headerTagline}>
                 {user ? `Welcome, ${user.email?.split('@')[0]}!` : "Korea's #1 Flight School Platform"}
               </Text>
@@ -334,7 +336,7 @@ const HomeScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.footerCopyright}>© 2025 PreflightSchool. All rights reserved.</Text>
+      <Text style={styles.footerCopyright}>© 2025 {settings.app_name}. All rights reserved.</Text>
     </View>
   );
 
