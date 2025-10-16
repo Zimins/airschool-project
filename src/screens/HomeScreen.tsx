@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,8 @@ import FlightSchoolCard from '../components/FlightSchoolCard';
 import ProfileMenu from '../components/ProfileMenu';
 import ProfileSettingsModal from '../components/ProfileSettingsModal';
 import { useAuth } from '../context/AuthContext';
+import { usePasswordReset } from '../../App';
+import { AuthService } from '../services/AuthService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -33,14 +35,41 @@ const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { state, actions } = useAuth();
   const { user, session } = state;
+  const { isFromPasswordReset } = usePasswordReset();
   const isAdmin = session?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [filteredSchools, setFilteredSchools] = useState<FlightSchool[]>([]);
   const [allSchools, setAllSchools] = useState<FlightSchool[]>([]);
+  const [selectedTag, setSelectedTag] = useState('All');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [flightSchoolService] = useState(() => new FlightSchoolService());
+
+  // Helper function to normalize city names
+  const normalizeCity = (city: string | null | undefined): string => {
+    return (city || 'Unknown').trim().toLowerCase();
+  };
+
+  // Memoized city tags to avoid recalculating on every render
+  const cityTags = useMemo(() => {
+    const cities = allSchools
+      .map(school => school.city)
+      .filter(Boolean)
+      .map(city => city!.trim());
+
+    const uniqueCities = Array.from(new Set(cities)).sort();
+    return ['All', ...uniqueCities];
+  }, [allSchools]);
+
+  // Auto-open profile settings when coming from password reset email
+  useEffect(() => {
+    if (isFromPasswordReset && session) {
+      console.log('🔑 Opening profile settings from password reset email');
+      setShowProfileSettings(true);
+      // Don't reset the flag here - let ProfileSettingsModal handle it
+    }
+  }, [isFromPasswordReset, session]);
 
   useEffect(() => {
     loadFlightSchools();
@@ -48,31 +77,47 @@ const HomeScreen = () => {
 
   useEffect(() => {
     if (!isLoading && allSchools.length > 0) {
+      let filtered = allSchools;
+
+      // Filter by tag with normalized comparison
+      if (selectedTag !== 'All') {
+        filtered = filtered.filter(school =>
+          normalizeCity(school.city) === normalizeCity(selectedTag)
+        );
+      }
+
+      // Filter by search query
       if (searchQuery.trim()) {
-        const filtered = allSchools.filter(
+        filtered = filtered.filter(
           school =>
             school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            school.location.toLowerCase().includes(searchQuery.toLowerCase())
+            school.location.toLowerCase().includes(searchQuery.toLowerCase()),
         );
-        setFilteredSchools(filtered);
-      } else {
-        setFilteredSchools(allSchools);
       }
+
+      setFilteredSchools(filtered);
     }
-  }, [searchQuery, allSchools, isLoading]);
+  }, [searchQuery, selectedTag, allSchools, isLoading]);
 
   const loadFlightSchools = async () => {
-    console.log('🔄 Loading flight schools from Supabase...');
+    if (__DEV__) {
+      console.log('🔄 Loading flight schools from Supabase...');
+    }
     setIsLoading(true);
 
     try {
       const schools = await flightSchoolService.getAllFlightSchools();
-      console.log(`✅ Loaded ${schools.length} flight schools from database`);
+      if (__DEV__) {
+        console.log(`✅ Loaded ${schools.length} flight schools from database`);
+      }
       setAllSchools(schools);
       setFilteredSchools(schools);
+      // City tags are now computed via useMemo
     } catch (error) {
-      console.error('❌ Error loading flight schools:', error);
-      console.error('💾 Database connection failed - no fallback data available');
+      if (__DEV__) {
+        console.error('❌ Error loading flight schools:', error);
+        console.error('💾 Database connection failed - no fallback data available');
+      }
 
       // Show empty state instead of mock data
       setAllSchools([]);
@@ -116,64 +161,33 @@ const HomeScreen = () => {
   };
 
   const handleRoleChange = async () => {
-    console.log('🟢 HomeScreen: handleRoleChange called!');
-    console.log('🟢 Current session:', session);
-    console.log('🟢 Current isAdmin:', isAdmin);
+    if (__DEV__) {
+      console.log('🟢 HomeScreen: handleRoleChange called!');
+      console.log('🟢 Current isAdmin:', isAdmin);
+    }
 
     const newRole = isAdmin ? 'user' : 'admin';
     const roleDisplayName = newRole === 'admin' ? 'Administrator' : 'Regular User';
 
-    console.log('🟢 Target role:', newRole);
-    console.log('🟢 Target display name:', roleDisplayName);
-
     try {
-      console.log(`🔄 Switching role from ${session?.role} to ${newRole}...`);
-
-      // Use Supabase Auth updateUser to change role
-      const { createClient } = require('@supabase/supabase-js');
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase configuration missing');
+      if (__DEV__) {
+        console.log(`🔄 Switching role from ${session?.role} to ${newRole}...`);
       }
 
-      const supabase = createClient(supabaseUrl, supabaseKey);
-
-      const { data, error } = await supabase.auth.updateUser({
-        data: {
-          role: newRole,
-          role_changed_at: new Date().toISOString(),
-          role_change_count: (session?.supabaseSession?.user?.user_metadata?.role_change_count || 0) + 1
-        }
-      });
-
-      if (error) {
-        console.error('❌ Role change error:', error.message);
-
-        if (Platform.OS === 'web') {
-          window.alert(`Role Change Failed\n\nUnable to switch to ${roleDisplayName} role.\n\nError: ${error.message}`);
-        } else {
-          Alert.alert(
-            'Role Change Failed',
-            `Unable to switch to ${roleDisplayName} role.\n\nError: ${error.message}`,
-            [{ text: 'OK' }]
-          );
-        }
-        return;
-      }
-
-      console.log('✅ Role changed successfully:', newRole);
-      console.log('Updated user metadata:', data.user?.user_metadata);
+      // Use AuthService to update role
+      const authService = new AuthService();
+      await authService.updateUserRole(newRole);
 
       // Refresh the session to get updated role
       await actions.checkSession();
 
       // Show success alert with additional context
-      const successMessage = `🎉 Role Changed Successfully!\n\nYou are now logged in as ${roleDisplayName}.\n\n` +
-        `${newRole === 'admin'
-          ? '• You now have access to the Admin Dashboard\n• Admin features are now available'
-          : '• Admin features are now hidden\n• You have standard user permissions'
+      const successMessage =
+        `🎉 Role Changed Successfully!\n\nYou are now logged in as ${roleDisplayName}.\n\n` +
+        `${
+          newRole === 'admin'
+            ? '• You now have access to the Admin Dashboard\n• Admin features are now available'
+            : '• Admin features are now hidden\n• You have standard user permissions'
         }`;
 
       if (Platform.OS === 'web') {
@@ -182,27 +196,28 @@ const HomeScreen = () => {
         Alert.alert(
           '🎉 Role Changed Successfully!',
           `You are now logged in as ${roleDisplayName}.\n\n` +
-          `${newRole === 'admin'
-            ? '• You now have access to the Admin Dashboard\n• Admin features are now available'
-            : '• Admin features are now hidden\n• You have standard user permissions'
-          }`,
+            `${
+              newRole === 'admin'
+                ? '• You now have access to the Admin Dashboard\n• Admin features are now available'
+                : '• Admin features are now hidden\n• You have standard user permissions'
+            }`,
           [
             {
               text: 'OK',
               onPress: () => {
                 console.log(`🎯 User role successfully changed to: ${newRole.toUpperCase()}`);
-              }
-            }
-          ]
+              },
+            },
+          ],
         );
       }
 
       console.log(`🎯 User role successfully changed to: ${newRole.toUpperCase()}`);
-
     } catch (error) {
       console.error('❌ Role change failed:', error);
 
-      const errorMessage = 'Failed to change role. Please try again.\n\nIf the problem persists, please check your internet connection.';
+      const errorMessage =
+        'Failed to change role. Please try again.\n\nIf the problem persists, please check your internet connection.';
 
       if (Platform.OS === 'web') {
         window.alert(`Error\n\n${errorMessage}`);
@@ -215,7 +230,7 @@ const HomeScreen = () => {
   const renderHeader = () => (
     <View style={styles.headerWrapper}>
       <LinearGradient
-        colors={theme.colors.gradient.primary}
+        colors={theme.colors.gradient.primary as any}
         style={styles.gradientHeader}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -223,41 +238,30 @@ const HomeScreen = () => {
         <View style={styles.headerContent}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.headerTitle}>AirSchool</Text>
+              <Text style={styles.headerTitle}>PreflightSchool</Text>
               <Text style={styles.headerTagline}>
                 {user ? `Welcome, ${user.email?.split('@')[0]}!` : "Korea's #1 Flight School Platform"}
               </Text>
             </View>
             <View style={styles.headerButtons}>
               {isAdmin && (
-                <TouchableOpacity
-                  style={styles.adminButton}
-                  onPress={() => navigation.navigate('Admin')}
-                >
+                <TouchableOpacity style={styles.adminButton} onPress={() => navigation.navigate('Admin')}>
                   <Ionicons name="shield-checkmark-outline" size={28} color="white" />
                 </TouchableOpacity>
               )}
               {user ? (
-                <TouchableOpacity
-                  style={styles.profileButton}
-                  onPress={() => setShowProfileMenu(true)}
-                >
+                <TouchableOpacity style={styles.profileButton} onPress={() => setShowProfileMenu(true)}>
                   <Ionicons name="person-circle-outline" size={32} color="white" />
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity
-                  style={styles.profileButton}
-                  onPress={() => navigation.navigate('Login')}
-                >
+                <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate('Login')}>
                   <Ionicons name="person-circle-outline" size={32} color="white" />
                 </TouchableOpacity>
               )}
             </View>
           </View>
 
-          <Text style={styles.headerSubtitle}>
-            Find the perfect partner to realize your aviation dreams
-          </Text>
+          <Text style={styles.headerSubtitle}>Find the perfect partner to realize your aviation dreams</Text>
         </View>
       </LinearGradient>
 
@@ -279,26 +283,24 @@ const HomeScreen = () => {
       </View>
 
       <View style={styles.boardButtonsContainer}>
-        <TouchableOpacity
-          style={styles.boardButton}
-          onPress={() => navigation.navigate('CommunityBoard')}
-        >
+        <TouchableOpacity style={styles.boardButton} onPress={() => navigation.navigate('CommunityBoard')}>
           <Ionicons name="chatbubbles-outline" size={24} color={theme.colors.primary} />
           <Text style={styles.boardButtonText}>Community Board</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.boardButton}
-          onPress={() => navigation.navigate('StudyBoard')}
-        >
+        <TouchableOpacity style={styles.boardButton} onPress={() => navigation.navigate('StudyBoard')}>
           <Ionicons name="school-outline" size={24} color={theme.colors.secondary} />
           <Text style={styles.boardButtonText}>Study Board</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsContainer}>
-        {['All', 'Seoul/Gyeonggi', 'Busan', 'Jeju', 'PPL', 'CPL', 'Helicopter'].map((tag) => (
-          <TouchableOpacity key={tag} style={styles.tagButton}>
-            <Text style={styles.tagText}>{tag}</Text>
+        {cityTags.map(tag => (
+          <TouchableOpacity
+            key={tag}
+            style={[styles.tagButton, selectedTag === tag && styles.tagButtonActive]}
+            onPress={() => setSelectedTag(tag)}
+          >
+            <Text style={[styles.tagText, selectedTag === tag && styles.tagTextActive]}>{tag}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -311,10 +313,7 @@ const HomeScreen = () => {
       <Text style={styles.footerSubtitle}>Stay connected for the latest updates</Text>
 
       <View style={styles.socialButtonsContainer}>
-        <TouchableOpacity
-          style={styles.socialButton}
-          onPress={() => handleSocialMediaPress('instagram')}
-        >
+        <TouchableOpacity style={styles.socialButton} onPress={() => handleSocialMediaPress('instagram')}>
           <LinearGradient
             colors={['#833AB4', '#C13584', '#E1306C', '#FD1D1D', '#F56040', '#FCAF45']}
             start={{ x: 0, y: 0 }}
@@ -326,10 +325,7 @@ const HomeScreen = () => {
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.socialButton}
-          onPress={() => handleSocialMediaPress('tiktok')}
-        >
+        <TouchableOpacity style={styles.socialButton} onPress={() => handleSocialMediaPress('tiktok')}>
           <LinearGradient
             colors={['#000000', '#010101']}
             start={{ x: 0, y: 0 }}
@@ -350,13 +346,8 @@ const HomeScreen = () => {
     <View style={styles.container}>
       <FlatList
         data={filteredSchools}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <FlightSchoolCard
-            school={item}
-            onPress={() => handleSchoolPress(item.id)}
-          />
-        )}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => <FlightSchoolCard school={item} onPress={() => handleSchoolPress(item.id)} />}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={
@@ -369,13 +360,8 @@ const HomeScreen = () => {
             <View style={styles.emptyContainer}>
               <Ionicons name="warning-outline" size={48} color={theme.colors.error} />
               <Text style={styles.emptyText}>Database Connection Failed</Text>
-              <Text style={styles.emptySubtext}>
-                Please check Supabase configuration and ensure flight_schools table exists.
-              </Text>
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={loadFlightSchools}
-              >
+              <Text style={styles.emptySubtext}>Please check Supabase configuration and ensure flight_schools table exists.</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={loadFlightSchools}>
                 <Ionicons name="refresh-outline" size={20} color="white" />
                 <Text style={styles.retryButtonText}>Retry</Text>
               </TouchableOpacity>
@@ -391,7 +377,14 @@ const HomeScreen = () => {
         onClose={() => setShowProfileMenu(false)}
         user={user}
         session={session}
-        onLogout={actions.logout}
+        onLogout={async () => {
+          console.log('🔴 HomeScreen: Logout triggered');
+          setShowProfileMenu(false);
+          await actions.logout();
+          console.log('✅ HomeScreen: Logout completed, staying on Home page');
+          // 이미 Home 화면이므로 페이지 이동 불필요
+          // 상태가 업데이트되어 UI가 자동으로 변경됩니다
+        }}
         onNavigateToAdmin={() => navigation.navigate('Admin')}
         onRoleChange={handleRoleChange}
         onShowProfileSettings={() => setShowProfileSettings(true)}
@@ -583,10 +576,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
+  tagButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
   tagText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.text,
     fontWeight: '500',
+  },
+  tagTextActive: {
+    color: 'white',
+    fontWeight: '600',
   },
   listContent: {
     paddingBottom: theme.spacing.lg,

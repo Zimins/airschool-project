@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, createContext, useContext, useState } from 'react';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -7,6 +7,19 @@ import * as Linking from 'expo-linking';
 import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { RootStackParamList } from './src/navigation/AppNavigator';
+
+// Context to track if user came from password reset email
+type PasswordResetContextType = {
+  isFromPasswordReset: boolean;
+  setIsFromPasswordReset: (value: boolean) => void;
+};
+
+const PasswordResetContext = createContext<PasswordResetContextType>({
+  isFromPasswordReset: false,
+  setIsFromPasswordReset: () => {},
+});
+
+export const usePasswordReset = () => useContext(PasswordResetContext);
 
 // Web-specific error handler setup
 if (Platform.OS === 'web') {
@@ -43,14 +56,55 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
 };
 
+function AppContent() {
+  const [isFromPasswordReset, setIsFromPasswordReset] = useState(false);
+
+  useEffect(() => {
+    // Check URL hash for password reset token (type=recovery)
+    if (Platform.OS === 'web') {
+      const checkPasswordReset = () => {
+        try {
+          const hash = window.location.hash;
+          if (!hash) return;
+
+          // Properly parse URL hash using URLSearchParams
+          const hashParams = new URLSearchParams(hash.substring(1));
+          const type = hashParams.get('type');
+
+          if (type === 'recovery' || type === 'password_recovery') {
+            if (__DEV__) {
+              console.log('🔑 Password reset link detected');
+            }
+            setIsFromPasswordReset(true);
+          }
+        } catch (error) {
+          console.error('Error parsing password reset hash:', error);
+        }
+      };
+
+      checkPasswordReset();
+
+      // Listen for hash changes
+      window.addEventListener('hashchange', checkPasswordReset);
+      return () => window.removeEventListener('hashchange', checkPasswordReset);
+    }
+  }, []);
+
+  return (
+    <PasswordResetContext.Provider value={{ isFromPasswordReset, setIsFromPasswordReset }}>
+      <NavigationContainer linking={linking}>
+        <AppNavigator />
+      </NavigationContainer>
+    </PasswordResetContext.Provider>
+  );
+}
+
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-          <NavigationContainer linking={linking}>
-            <AppNavigator />
-          </NavigationContainer>
+          <AppContent />
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Review } from '../data/mockData';
 import { theme } from '../styles/theme';
 
@@ -8,6 +9,9 @@ interface ReviewCardProps {
 }
 
 const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
+  const [isHelpful, setIsHelpful] = useState(false);
+  const [helpfulCount, setHelpfulCount] = useState(review.helpful);
+
   const renderStars = (rating: number) => {
     const stars = [];
     for (let i = 0; i < 5; i++) {
@@ -23,6 +27,18 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const handleHelpfulPress = () => {
+    if (isHelpful) {
+      // Already marked as helpful, undo it
+      setIsHelpful(false);
+      setHelpfulCount(helpfulCount - 1);
+    } else {
+      // Mark as helpful
+      setIsHelpful(true);
+      setHelpfulCount(helpfulCount + 1);
+    }
   };
 
   return (
@@ -42,8 +58,20 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
       <Text style={styles.content}>{review.content}</Text>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.helpfulButton}>
-          <Text style={styles.helpfulText}>Helpful ({review.helpful})</Text>
+        <TouchableOpacity
+          style={[styles.helpfulButton, isHelpful && styles.helpfulButtonActive]}
+          onPress={handleHelpfulPress}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={isHelpful ? 'thumbs-up' : 'thumbs-up-outline'}
+            size={16}
+            color={isHelpful ? theme.colors.primary : theme.colors.textSecondary}
+            style={styles.helpfulIcon}
+          />
+          <Text style={[styles.helpfulText, isHelpful && styles.helpfulTextActive]}>
+            Helpful ({helpfulCount})
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -105,15 +133,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   helpfulButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.surface,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      userSelect: 'none',
+    } as any),
+  },
+  helpfulButtonActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: `${theme.colors.primary}10`,
+  },
+  helpfulIcon: {
+    marginRight: theme.spacing.xs,
   },
   helpfulText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
+  },
+  helpfulTextActive: {
+    color: theme.colors.primary,
+    fontWeight: '600',
   },
 });
 

@@ -11,6 +11,7 @@ import {
   Platform,
   StatusBar,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -22,6 +23,7 @@ import ReviewCard from '../components/ReviewCard';
 import ReviewModal from '../components/ReviewModal';
 import { FlightSchoolService } from '../services/FlightSchoolService';
 import { FlightSchool, Review } from '../types/flightSchool';
+import { useAuth } from '../context/AuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlightSchoolDetail'>;
 
@@ -31,6 +33,7 @@ const FlightSchoolDetailScreen = () => {
   const route = useRoute<Props['route']>();
   const navigation = useNavigation<Props['navigation']>();
   const { schoolId } = route.params;
+  const { state: authState } = useAuth();
 
   const [school, setSchool] = useState<FlightSchool | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -38,6 +41,7 @@ const FlightSchoolDetailScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('programs');
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [loginRequiredModalVisible, setLoginRequiredModalVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [flightSchoolService] = useState(() => new FlightSchoolService());
 
@@ -82,6 +86,14 @@ const FlightSchoolDetailScreen = () => {
   };
 
   const ratingDistribution = school ? getRatingDistribution(schoolId) : { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+
+  const handleWriteReviewClick = () => {
+    if (!authState.isAuthenticated) {
+      setLoginRequiredModalVisible(true);
+    } else {
+      setReviewModalVisible(true);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -191,7 +203,7 @@ const FlightSchoolDetailScreen = () => {
               <Text style={styles.sectionTitle}>Reviews</Text>
               <TouchableOpacity
                 style={styles.writeReviewButton}
-                onPress={() => setReviewModalVisible(true)}
+                onPress={handleWriteReviewClick}
               >
                 <Text style={styles.writeReviewButtonText}>Write Review</Text>
               </TouchableOpacity>
@@ -253,9 +265,15 @@ const FlightSchoolDetailScreen = () => {
         </View>
         
         {/* Back Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Home' as never);
+            }
+          }}
         >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
@@ -291,11 +309,6 @@ const FlightSchoolDetailScreen = () => {
       {/* Tab Content */}
       {renderTabContent()}
 
-      {/* Floating Contact Button */}
-      <TouchableOpacity style={styles.contactButton}>
-        <Text style={styles.contactButtonText}>Contact</Text>
-      </TouchableOpacity>
-
       {/* Review Modal */}
       <ReviewModal
         visible={reviewModalVisible}
@@ -303,6 +316,41 @@ const FlightSchoolDetailScreen = () => {
         schoolId={schoolId}
         schoolName={school.name}
       />
+
+      {/* Login Required Modal */}
+      <Modal
+        visible={loginRequiredModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLoginRequiredModalVisible(false)}
+      >
+        <View style={styles.loginModalOverlay}>
+          <View style={styles.loginModalContainer}>
+            <Ionicons name="lock-closed-outline" size={48} color={theme.colors.primary} />
+            <Text style={styles.loginModalTitle}>Login Required</Text>
+            <Text style={styles.loginModalMessage}>
+              You need to be logged in to write a review.
+            </Text>
+            <View style={styles.loginModalButtons}>
+              <TouchableOpacity
+                style={[styles.loginModalButton, styles.loginModalCancelButton]}
+                onPress={() => setLoginRequiredModalVisible(false)}
+              >
+                <Text style={styles.loginModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.loginModalButton, styles.loginModalLoginButton]}
+                onPress={() => {
+                  setLoginRequiredModalVisible(false);
+                  navigation.navigate('Login' as never);
+                }}
+              >
+                <Text style={styles.loginModalLoginText}>Login</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -366,6 +414,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 100,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+    } as any),
   },
   heroImage: {
     width: '100%',
@@ -591,6 +643,63 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: theme.fontSize.base,
     fontWeight: 'bold',
+  },
+  loginModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  loginModalContainer: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    ...theme.shadow.xl,
+  },
+  loginModalTitle: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  loginModalMessage: {
+    fontSize: theme.fontSize.base,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xl,
+    lineHeight: 22,
+  },
+  loginModalButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    width: '100%',
+  },
+  loginModalButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+  },
+  loginModalCancelButton: {
+    backgroundColor: theme.colors.border,
+  },
+  loginModalCancelText: {
+    fontSize: theme.fontSize.base,
+    color: theme.colors.text,
+    fontWeight: '600',
+  },
+  loginModalLoginButton: {
+    backgroundColor: theme.colors.primary,
+  },
+  loginModalLoginText: {
+    fontSize: theme.fontSize.base,
+    color: 'white',
+    fontWeight: '600',
   },
 });
 

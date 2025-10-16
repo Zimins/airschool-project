@@ -4,21 +4,21 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { 
-  User, 
-  UserSession, 
-  UserLoginData, 
-  UserCreateData, 
+import { Platform } from 'react-native';
+import {
+  User,
+  UserSession,
+  UserLoginData,
+  UserCreateData,
   DatabaseUser,
   AuthError,
-  AuthErrorType 
+  AuthErrorType
 } from '../types/auth';
 import { UserModel, UserValidationError } from '../models/User';
-import { CryptoUtils } from '../utils/crypto';
 import { SessionManager } from '../utils/session';
 
 export class AuthService {
-  private supabase: SupabaseClient;
+  public supabase: SupabaseClient;
   
   constructor() {
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -56,11 +56,29 @@ export class AuthService {
       // Get user role from user metadata or default to 'user'
       const userRole = data.user.user_metadata?.role || 'user';
 
-      // Create our internal session format
+      // Fetch additional user data from profiles table (including nickname)
+      let nickname: string | undefined;
+      try {
+        const { data: profileData, error: profileError } = await this.supabase
+          .from('profiles')
+          .select('nickname')
+          .eq('id', data.user.id)
+          .single();
+
+        if (!profileError && profileData) {
+          nickname = profileData.nickname;
+        }
+      } catch (profileError) {
+        console.warn('Failed to fetch profile data:', profileError);
+        // Continue with login even if profile fetch fails
+      }
+
+      // Create our internal session format with nickname
       const session: UserSession = {
         userId: data.user.id,
         email: data.user.email || normalizedEmail,
         role: userRole as 'user' | 'admin',
+        nickname, // Add nickname to session
         loginTimestamp: Date.now(),
         token: data.session.access_token,
         supabaseSession: data.session // Store the full Supabase session
@@ -104,6 +122,61 @@ export class AuthService {
       if (error) {
         console.error('Supabase Auth signup error:', error?.message);
         throw new Error(error?.message || 'Failed to create user');
+      }
+
+      // If user was created successfully and we have a nickname, upsert profile
+      // Use exponential backoff retry logic to wait for database triggers
+      if (data.user && userData.nickname) {
+        try {
+          // Retry up to 3 times with exponential backoff (500ms, 1s, 2s)
+          for (let i = 0; i < 3; i++) {
+            const delay = 500 * Math.pow(2, i);
+            await new Promise(resolve => setTimeout(resolve, delay));
+
+            // Check if profile was created by trigger
+            const { data: existingProfile } = await this.supabase
+              .from('profiles')
+              .select('id')
+              .eq('id', data.user.id)
+              .single();
+
+            if (existingProfile) {
+              if (__DEV__) {
+                console.log('✅ Profile trigger completed, upserting nickname');
+              }
+              break;
+            }
+
+            if (__DEV__ && i < 2) {
+              console.log(`⏳ Waiting for profile trigger (attempt ${i + 1}/3)...`);
+            }
+          }
+
+          // Upsert profile with nickname
+          const { error: profileError } = await this.supabase
+            .from('profiles')
+            .upsert({
+              id: data.user.id,
+              nickname: userData.nickname,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'id' // Update if profile already exists
+            })
+            .select();
+
+          if (profileError) {
+            if (__DEV__) {
+              console.error('❌ Failed to upsert profile:', profileError.message);
+            }
+          } else if (__DEV__) {
+            console.log('✅ Profile upserted successfully');
+          }
+        } catch (profileError) {
+          if (__DEV__) {
+            console.error('❌ Profile upsert error:', profileError);
+          }
+          // Continue without throwing - user account is already created
+        }
       }
 
       // Return the full Supabase Auth response so caller can handle different scenarios
@@ -267,6 +340,7 @@ export class AuthService {
 
   /**
    * Change user password (authenticated users only)
+   * Uses Supabase Auth to update password
    */
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     const session = await this.getCurrentSession();
@@ -278,41 +352,32 @@ export class AuthService {
     UserModel.validatePassword(newPassword);
 
     try {
-      // Get current user data
-      const { data: userData, error: fetchError } = await this.supabase
-        .from('users')
-        .select('id, password_hash')
-        .eq('id', session.userId)
-        .single();
+      // First, verify current password by trying to sign in
+      const { data: signInData, error: signInError } = await this.supabase.auth.signInWithPassword({
+        email: session.email,
+        password: currentPassword,
+      });
 
-      if (fetchError || !userData) {
-        throw new Error('User not found');
-      }
-
-      // Verify current password
-      const isValidCurrentPassword = CryptoUtils.verifyPassword(
-        currentPassword,
-        userData.password_hash
-      );
-
-      if (!isValidCurrentPassword) {
+      if (signInError || !signInData.user) {
         throw new Error('Current password is incorrect');
       }
 
-      // Hash new password
-      const newPasswordHash = CryptoUtils.hashPassword(newPassword);
-
-      // Update password in database
-      const { error: updateError } = await this.supabase
-        .from('users')
-        .update({ password_hash: newPasswordHash })
-        .eq('id', session.userId);
+      // If current password is correct, update to new password
+      const { error: updateError } = await this.supabase.auth.updateUser({
+        password: newPassword,
+      });
 
       if (updateError) {
-        throw new Error('Failed to update password');
+        console.error('Supabase update password error:', updateError?.message);
+        throw new Error(updateError?.message || 'Failed to update password');
       }
+
+      console.log('✅ Password updated successfully');
     } catch (error) {
-      throw error;
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to change password');
     }
   }
 
@@ -370,4 +435,124 @@ export class AuthService {
       throw error;
     }
   }
+
+  /**
+   * Delete user account
+   * Removes the user from Supabase Auth and clears session
+   */
+  async deleteAccount(session: UserSession): Promise<void> {
+    if (!session || !session.userId) {
+      throw new Error('No active session found');
+    }
+
+    try {
+      console.log('🗑️ Deleting account for user:', session.userId);
+
+      // Delete the currently authenticated user from Supabase Auth
+      // This works because the user is deleting their own account
+      const { error: deleteError } = await this.supabase.rpc('delete_user');
+
+      if (deleteError) {
+        console.error('Failed to delete account:', deleteError);
+        throw new Error('Failed to delete account. Please try again.');
+      }
+
+      console.log('✅ Account deleted from database');
+
+      // Clear local session only (no need to call signOut since user is already deleted)
+      await SessionManager.clearSession();
+
+      console.log('✅ Account deletion completed');
+    } catch (error) {
+      console.error('Delete account error:', error);
+
+      // If deletion fails, try to clean up session anyway
+      try {
+        await SessionManager.clearSession();
+      } catch (clearError) {
+        console.error('Session clear error:', clearError);
+      }
+
+      throw error instanceof Error ? error : new Error('Failed to delete account. Please try again or contact support.');
+    }
+  }
+
+  /**
+   * Update user role
+   * Changes the user's role in user_metadata
+   */
+  async updateUserRole(newRole: 'user' | 'admin'): Promise<void> {
+    const session = await this.getCurrentSession();
+    if (!session) {
+      throw new Error('Not authenticated');
+    }
+
+    try {
+      const { error } = await this.supabase.auth.updateUser({
+        data: {
+          role: newRole,
+          role_changed_at: new Date().toISOString(),
+          role_change_count: (session.supabaseSession?.user?.user_metadata?.role_change_count || 0) + 1,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to update role');
+      }
+
+      // Update local session with new role
+      const updatedSession: UserSession = {
+        ...session,
+        role: newRole,
+      };
+      await SessionManager.saveSession(updatedSession);
+
+      if (__DEV__) {
+        console.log('✅ Role updated successfully to:', newRole);
+      }
+
+      return;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to update role');
+    }
+  }
+
+  /**
+   * Send password reset email
+   * Uses Supabase Auth to send password reset link
+   */
+  async resetPasswordEmail(email: string): Promise<void> {
+    try {
+      const normalizedEmail = UserModel.normalizeEmail(email);
+
+      // Get redirect URL based on platform
+      const redirectTo = Platform.OS === 'web'
+        ? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:19006')
+        : 'airschool://reset-password'; // Deep link for mobile
+
+      const { error } = await this.supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo,
+      });
+
+      if (error) {
+        if (__DEV__) {
+          console.error('Supabase reset password error:', error?.message);
+        }
+        throw new Error(error?.message || 'Failed to send reset email');
+      }
+
+      if (__DEV__) {
+        console.log('✅ Password reset email sent successfully');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to send reset email');
+    }
+  }
+
 }

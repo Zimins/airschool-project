@@ -98,6 +98,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         id: session.userId,
         email: session.email,
         role: session.role,
+        nickname: session.nickname, // Include nickname from session
         created_at: new Date().toISOString(),
         last_login: new Date().toISOString(),
         is_active: true,
@@ -115,15 +116,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const logout = async (): Promise<void> => {
+    console.log('🔴 AuthContext: Starting logout...');
     dispatch({ type: 'SET_LOADING', payload: true });
-    
+
     try {
+      console.log('🔴 Calling authService.logout()...');
       await authService.logout();
+      console.log('✅ authService.logout() completed');
       dispatch({ type: 'LOGOUT' });
+      console.log('✅ Logout state dispatched');
     } catch (error) {
-      console.warn('Logout error:', error);
+      console.error('❌ Logout error:', error);
       // Always clear state even if logout fails
       dispatch({ type: 'LOGOUT' });
+      console.log('✅ Logout state dispatched (error recovery)');
     }
   };
 
@@ -139,10 +145,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // If we got a session back, the user is immediately signed in
         const userRole = result.user?.user_metadata?.role || 'user';
 
+        // Try to fetch nickname from profiles (if it exists)
+        let nickname: string | undefined;
+        try {
+          const { data: profileData } = await authService['supabase']
+            .from('profiles')
+            .select('nickname')
+            .eq('id', result.user!.id)
+            .single();
+
+          if (profileData) {
+            nickname = profileData.nickname;
+          }
+        } catch (error) {
+          console.warn('Failed to fetch profile during registration:', error);
+        }
+
         const user: User = {
           id: result.user!.id,
           email: result.user!.email || userData.email,
           role: userRole as 'user' | 'admin',
+          nickname, // Include nickname if available
           created_at: result.user!.created_at || new Date().toISOString(),
           last_login: null,
           is_active: true,
@@ -152,6 +175,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           userId: result.user!.id,
           email: result.user!.email || userData.email,
           role: userRole as 'user' | 'admin',
+          nickname, // Include nickname in session
           loginTimestamp: Date.now(),
           token: result.session.access_token,
           supabaseSession: result.session
@@ -179,6 +203,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const checkSession = async (): Promise<void> => {
+    if (__DEV__) console.log('🔍 checkSession called');
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
@@ -189,10 +214,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Valid Supabase session exists
         const userRole = supabaseSession.user.user_metadata?.role || 'user';
 
+        // Fetch nickname from profiles table
+        let nickname: string | undefined;
+        try {
+          const authService = new AuthService();
+          const { data: profileData } = await authService['supabase']
+            .from('profiles')
+            .select('nickname')
+            .eq('id', supabaseSession.user.id)
+            .single();
+
+          if (profileData) {
+            nickname = profileData.nickname;
+          }
+        } catch (error) {
+          console.warn('Failed to fetch profile in checkSession:', error);
+        }
+
         const user: User = {
           id: supabaseSession.user.id,
           email: supabaseSession.user.email || '',
           role: userRole as 'user' | 'admin',
+          nickname, // Include nickname from profiles
           created_at: supabaseSession.user.created_at || new Date().toISOString(),
           last_login: supabaseSession.user.last_sign_in_at || null,
           is_active: true,
@@ -202,6 +245,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           userId: supabaseSession.user.id,
           email: supabaseSession.user.email || '',
           role: userRole as 'user' | 'admin',
+          nickname, // Include nickname in session
           loginTimestamp: Date.now(),
           token: supabaseSession.access_token,
           supabaseSession
