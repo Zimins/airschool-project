@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { theme } from '../styles/theme';
 import { useAuth } from '../context/AuthContext';
+import { useAppSettings } from '../context/AppSettingsContext';
 import { UserModel } from '../models/User';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Signup'>;
@@ -25,6 +26,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Signup'>;
 const SignupScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { state, actions } = useAuth();
+  const { settings } = useAppSettings();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -146,7 +148,7 @@ const SignupScreen = () => {
 
         <View style={styles.header}>
           <Text style={styles.title}>Sign Up</Text>
-          <Text style={styles.subtitle}>Start your flight dream with PreflightSchool</Text>
+          <Text style={styles.subtitle}>Start your flight dream with {settings.app_name}</Text>
         </View>
 
         <View style={styles.form}>

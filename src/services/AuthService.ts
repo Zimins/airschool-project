@@ -482,37 +482,58 @@ export class AuthService {
    * Changes the user's role in user_metadata
    */
   async updateUserRole(newRole: 'user' | 'admin'): Promise<void> {
-    const session = await this.getCurrentSession();
-    if (!session) {
-      throw new Error('Not authenticated');
-    }
-
     try {
-      const { error } = await this.supabase.auth.updateUser({
+      console.log('🔄 Starting role update to:', newRole);
+
+      // Get current Supabase session directly
+      const { data: { session: supabaseSession }, error: sessionError } = await this.supabase.auth.getSession();
+
+      if (sessionError || !supabaseSession) {
+        console.error('❌ No active Supabase session:', sessionError);
+        throw new Error('Not authenticated');
+      }
+
+      console.log('✅ Found Supabase session for user:', supabaseSession.user.email);
+
+      const { data, error } = await this.supabase.auth.updateUser({
         data: {
           role: newRole,
           role_changed_at: new Date().toISOString(),
-          role_change_count: (session.supabaseSession?.user?.user_metadata?.role_change_count || 0) + 1,
+          role_change_count: (supabaseSession.user.user_metadata?.role_change_count || 0) + 1,
         },
       });
 
       if (error) {
+        console.error('❌ Supabase updateUser error:', error);
         throw new Error(error.message || 'Failed to update role');
       }
 
-      // Update local session with new role
-      const updatedSession: UserSession = {
-        ...session,
-        role: newRole,
-      };
-      await SessionManager.saveSession(updatedSession);
+      console.log('✅ Supabase updateUser success, new role:', data?.user?.user_metadata?.role);
 
-      if (__DEV__) {
-        console.log('✅ Role updated successfully to:', newRole);
+      // Refresh session to get latest metadata
+      const { data: refreshData, error: refreshError } = await this.supabase.auth.refreshSession();
+
+      if (refreshError) {
+        console.warn('⚠️ Session refresh warning:', refreshError);
+      } else {
+        console.log('🔄 Session refreshed, metadata:', refreshData.user?.user_metadata);
+      }
+
+      // Update local session with new role
+      const localSession = await this.getCurrentSession();
+      if (localSession) {
+        const updatedSession: UserSession = {
+          ...localSession,
+          role: newRole,
+          supabaseSession: refreshData?.session || localSession.supabaseSession,
+        };
+        await SessionManager.saveSession(updatedSession);
+        console.log('✅ Local session updated with new role:', newRole);
       }
 
       return;
     } catch (error) {
+      console.error('❌ updateUserRole error:', error);
       if (error instanceof Error) {
         throw error;
       }

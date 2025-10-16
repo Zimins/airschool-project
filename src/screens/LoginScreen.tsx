@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { theme } from '../styles/theme';
 import { useAuth } from '../context/AuthContext';
+import { useAppSettings } from '../context/AppSettingsContext';
 import WebButton from '../components/WebButton';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -27,6 +28,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 const LoginScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { state, actions } = useAuth();
+  const { settings } = useAppSettings();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -101,7 +103,7 @@ const LoginScreen = () => {
 
         <View style={styles.header}>
           <Text style={styles.title}>Welcome!</Text>
-          <Text style={styles.subtitle}>Sign in with your PreflightSchool account</Text>
+          <Text style={styles.subtitle}>Sign in with your {settings.app_name} account</Text>
         </View>
 
         <View style={styles.form}>
