@@ -203,7 +203,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const checkSession = async (): Promise<void> => {
-    console.log('🔍 checkSession called');
+    if (__DEV__) console.log('🔍 checkSession called');
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {

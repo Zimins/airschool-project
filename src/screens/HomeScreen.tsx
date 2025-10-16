@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,7 @@ import ProfileMenu from '../components/ProfileMenu';
 import ProfileSettingsModal from '../components/ProfileSettingsModal';
 import { useAuth } from '../context/AuthContext';
 import { usePasswordReset } from '../../App';
+import { AuthService } from '../services/AuthService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -34,17 +35,32 @@ const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { state, actions } = useAuth();
   const { user, session } = state;
-  const { isFromPasswordReset, setIsFromPasswordReset } = usePasswordReset();
+  const { isFromPasswordReset } = usePasswordReset();
   const isAdmin = session?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [filteredSchools, setFilteredSchools] = useState<FlightSchool[]>([]);
   const [allSchools, setAllSchools] = useState<FlightSchool[]>([]);
-  const [cityTags, setCityTags] = useState<string[]>(['All']);
   const [selectedTag, setSelectedTag] = useState('All');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [flightSchoolService] = useState(() => new FlightSchoolService());
+
+  // Helper function to normalize city names
+  const normalizeCity = (city: string | null | undefined): string => {
+    return (city || 'Unknown').trim().toLowerCase();
+  };
+
+  // Memoized city tags to avoid recalculating on every render
+  const cityTags = useMemo(() => {
+    const cities = allSchools
+      .map(school => school.city)
+      .filter(Boolean)
+      .map(city => city!.trim());
+
+    const uniqueCities = Array.from(new Set(cities)).sort();
+    return ['All', ...uniqueCities];
+  }, [allSchools]);
 
   // Auto-open profile settings when coming from password reset email
   useEffect(() => {
@@ -63,9 +79,11 @@ const HomeScreen = () => {
     if (!isLoading && allSchools.length > 0) {
       let filtered = allSchools;
 
-      // Filter by tag
+      // Filter by tag with normalized comparison
       if (selectedTag !== 'All') {
-        filtered = filtered.filter(school => school.city === selectedTag);
+        filtered = filtered.filter(school =>
+          normalizeCity(school.city) === normalizeCity(selectedTag)
+        );
       }
 
       // Filter by search query
@@ -82,26 +100,28 @@ const HomeScreen = () => {
   }, [searchQuery, selectedTag, allSchools, isLoading]);
 
   const loadFlightSchools = async () => {
-    console.log('🔄 Loading flight schools from Supabase...');
+    if (__DEV__) {
+      console.log('🔄 Loading flight schools from Supabase...');
+    }
     setIsLoading(true);
 
     try {
       const schools = await flightSchoolService.getAllFlightSchools();
-      console.log(`✅ Loaded ${schools.length} flight schools from database`);
+      if (__DEV__) {
+        console.log(`✅ Loaded ${schools.length} flight schools from database`);
+      }
       setAllSchools(schools);
       setFilteredSchools(schools);
-
-      // Extract unique cities for tags
-      const uniqueCities = Array.from(new Set(schools.map(school => school.city).filter(Boolean)));
-      setCityTags(['All', ...uniqueCities.sort()]);
+      // City tags are now computed via useMemo
     } catch (error) {
-      console.error('❌ Error loading flight schools:', error);
-      console.error('💾 Database connection failed - no fallback data available');
+      if (__DEV__) {
+        console.error('❌ Error loading flight schools:', error);
+        console.error('💾 Database connection failed - no fallback data available');
+      }
 
       // Show empty state instead of mock data
       setAllSchools([]);
       setFilteredSchools([]);
-      setCityTags(['All']);
     } finally {
       setIsLoading(false);
     }
@@ -141,53 +161,22 @@ const HomeScreen = () => {
   };
 
   const handleRoleChange = async () => {
-    console.log('🟢 HomeScreen: handleRoleChange called!');
-    console.log('🟢 Current session:', session);
-    console.log('🟢 Current isAdmin:', isAdmin);
+    if (__DEV__) {
+      console.log('🟢 HomeScreen: handleRoleChange called!');
+      console.log('🟢 Current isAdmin:', isAdmin);
+    }
 
     const newRole = isAdmin ? 'user' : 'admin';
     const roleDisplayName = newRole === 'admin' ? 'Administrator' : 'Regular User';
 
-    console.log('🟢 Target role:', newRole);
-    console.log('🟢 Target display name:', roleDisplayName);
-
     try {
-      console.log(`🔄 Switching role from ${session?.role} to ${newRole}...`);
-
-      // Use Supabase Auth updateUser to change role
-      const { createClient } = require('@supabase/supabase-js');
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase configuration missing');
+      if (__DEV__) {
+        console.log(`🔄 Switching role from ${session?.role} to ${newRole}...`);
       }
 
-      const supabase = createClient(supabaseUrl, supabaseKey);
-
-      const { data, error } = await supabase.auth.updateUser({
-        data: {
-          role: newRole,
-          role_changed_at: new Date().toISOString(),
-          role_change_count: (session?.supabaseSession?.user?.user_metadata?.role_change_count || 0) + 1,
-        },
-      });
-
-      if (error) {
-        console.error('❌ Role change error:', error.message);
-
-        if (Platform.OS === 'web') {
-          window.alert(`Role Change Failed\n\nUnable to switch to ${roleDisplayName} role.\n\nError: ${error.message}`);
-        } else {
-          Alert.alert('Role Change Failed', `Unable to switch to ${roleDisplayName} role.\n\nError: ${error.message}`, [
-            { text: 'OK' },
-          ]);
-        }
-        return;
-      }
-
-      console.log('✅ Role changed successfully:', newRole);
-      console.log('Updated user metadata:', data.user?.user_metadata);
+      // Use AuthService to update role
+      const authService = new AuthService();
+      await authService.updateUserRole(newRole);
 
       // Refresh the session to get updated role
       await actions.checkSession();

@@ -63,10 +63,22 @@ function AppContent() {
     // Check URL hash for password reset token (type=recovery)
     if (Platform.OS === 'web') {
       const checkPasswordReset = () => {
-        const hash = window.location.hash;
-        if (hash.includes('type=recovery') || hash.includes('type=password_recovery')) {
-          console.log('🔑 Password reset link detected');
-          setIsFromPasswordReset(true);
+        try {
+          const hash = window.location.hash;
+          if (!hash) return;
+
+          // Properly parse URL hash using URLSearchParams
+          const hashParams = new URLSearchParams(hash.substring(1));
+          const type = hashParams.get('type');
+
+          if (type === 'recovery' || type === 'password_recovery') {
+            if (__DEV__) {
+              console.log('🔑 Password reset link detected');
+            }
+            setIsFromPasswordReset(true);
+          }
+        } catch (error) {
+          console.error('Error parsing password reset hash:', error);
         }
       };
 

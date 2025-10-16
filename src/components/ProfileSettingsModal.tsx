@@ -54,7 +54,7 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   // Auto-open password modal when coming from password reset email
   useEffect(() => {
     if (visible && isFromPasswordReset && session) {
-      console.log('🔑 Auto-opening password change modal from email reset');
+      if (__DEV__) console.log('🔑 Auto-opening password change modal from email reset');
       setShowPasswordModal(true);
       setIsPasswordResetSession(true); // Mark this session as from email reset
       setIsFromPasswordReset(false); // Reset the global flag
@@ -82,7 +82,7 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   const handleConfirmPasswordChange = async () => {
     setPasswordError('');
 
-    console.log('🔑 Password change - isPasswordResetSession:', isPasswordResetSession);
+    if (__DEV__) console.log('🔑 Password change - isPasswordResetSession:', isPasswordResetSession);
 
     // Validation - skip current password if from password reset email
     if (!isPasswordResetSession) {
@@ -124,7 +124,7 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
 
       // Only verify current password if NOT from password reset email
       if (!isPasswordResetSession) {
-        console.log('🔐 Verifying current password...');
+        if (__DEV__) console.log('🔐 Verifying current password...');
         const { data: signInData, error: signInError } = await authService.supabase.auth.signInWithPassword({
           email: session.email,
           password: currentPassword,
@@ -136,24 +136,24 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
           return;
         }
       } else {
-        console.log('✅ Skipping current password verification (from email reset)');
+        if (__DEV__) console.log('✅ Skipping current password verification (from email reset)');
       }
 
       // Update to new password
-      console.log('🔄 Updating password...');
+      if (__DEV__) console.log('🔄 Updating password...');
       const { error: updateError } = await authService.supabase.auth.updateUser({
         password: newPassword,
       });
 
       if (updateError) {
-        console.error('Update password error:', updateError);
+        if (__DEV__) console.error('Update password error:', updateError);
         setPasswordError(updateError.message || 'Failed to update password');
         setIsChangingPassword(false);
         return;
       }
 
       // Success
-      console.log('✅ Password updated successfully');
+      if (__DEV__) console.log('✅ Password updated successfully');
       setShowPasswordModal(false);
       setIsPasswordResetSession(false); // Reset session flag
       setCurrentPassword('');
@@ -190,8 +190,8 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
       return;
     }
 
-    // Verify email matches
-    if (deleteConfirmEmail.toLowerCase() !== user.email.toLowerCase()) {
+    // Verify email matches (with trimming to handle whitespace)
+    if (deleteConfirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) {
       if (Platform.OS === 'web') {
         window.alert('Email does not match. Please enter your email correctly.');
       } else {

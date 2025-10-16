@@ -4,6 +4,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 import {
   User,
   UserSession,
@@ -124,15 +125,35 @@ export class AuthService {
       }
 
       // If user was created successfully and we have a nickname, upsert profile
-      // Wait briefly for any database triggers to complete, then upsert
+      // Use exponential backoff retry logic to wait for database triggers
       if (data.user && userData.nickname) {
         try {
-          console.log('🔵 Waiting for trigger to complete...');
-          // Wait 1 second for trigger to create initial profile record
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Retry up to 3 times with exponential backoff (500ms, 1s, 2s)
+          for (let i = 0; i < 3; i++) {
+            const delay = 500 * Math.pow(2, i);
+            await new Promise(resolve => setTimeout(resolve, delay));
 
-          console.log('🔵 Upserting profile with nickname:', userData.nickname);
-          const { data: upsertData, error: profileError } = await this.supabase
+            // Check if profile was created by trigger
+            const { data: existingProfile } = await this.supabase
+              .from('profiles')
+              .select('id')
+              .eq('id', data.user.id)
+              .single();
+
+            if (existingProfile) {
+              if (__DEV__) {
+                console.log('✅ Profile trigger completed, upserting nickname');
+              }
+              break;
+            }
+
+            if (__DEV__ && i < 2) {
+              console.log(`⏳ Waiting for profile trigger (attempt ${i + 1}/3)...`);
+            }
+          }
+
+          // Upsert profile with nickname
+          const { error: profileError } = await this.supabase
             .from('profiles')
             .upsert({
               id: data.user.id,
@@ -144,12 +165,16 @@ export class AuthService {
             .select();
 
           if (profileError) {
-            console.error('❌ Failed to upsert profile:', profileError.message, profileError);
-          } else {
-            console.log('✅ Profile upserted successfully:', upsertData);
+            if (__DEV__) {
+              console.error('❌ Failed to upsert profile:', profileError.message);
+            }
+          } else if (__DEV__) {
+            console.log('✅ Profile upserted successfully');
           }
         } catch (profileError) {
-          console.error('❌ Profile upsert error:', profileError);
+          if (__DEV__) {
+            console.error('❌ Profile upsert error:', profileError);
+          }
           // Continue without throwing - user account is already created
         }
       }
@@ -453,6 +478,49 @@ export class AuthService {
   }
 
   /**
+   * Update user role
+   * Changes the user's role in user_metadata
+   */
+  async updateUserRole(newRole: 'user' | 'admin'): Promise<void> {
+    const session = await this.getCurrentSession();
+    if (!session) {
+      throw new Error('Not authenticated');
+    }
+
+    try {
+      const { error } = await this.supabase.auth.updateUser({
+        data: {
+          role: newRole,
+          role_changed_at: new Date().toISOString(),
+          role_change_count: (session.supabaseSession?.user?.user_metadata?.role_change_count || 0) + 1,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to update role');
+      }
+
+      // Update local session with new role
+      const updatedSession: UserSession = {
+        ...session,
+        role: newRole,
+      };
+      await SessionManager.saveSession(updatedSession);
+
+      if (__DEV__) {
+        console.log('✅ Role updated successfully to:', newRole);
+      }
+
+      return;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to update role');
+    }
+  }
+
+  /**
    * Send password reset email
    * Uses Supabase Auth to send password reset link
    */
@@ -460,16 +528,25 @@ export class AuthService {
     try {
       const normalizedEmail = UserModel.normalizeEmail(email);
 
+      // Get redirect URL based on platform
+      const redirectTo = Platform.OS === 'web'
+        ? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:19006')
+        : 'airschool://reset-password'; // Deep link for mobile
+
       const { error } = await this.supabase.auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo: `${window.location.origin}`,
+        redirectTo,
       });
 
       if (error) {
-        console.error('Supabase reset password error:', error?.message);
+        if (__DEV__) {
+          console.error('Supabase reset password error:', error?.message);
+        }
         throw new Error(error?.message || 'Failed to send reset email');
       }
 
-      console.log('✅ Password reset email sent successfully');
+      if (__DEV__) {
+        console.log('✅ Password reset email sent successfully');
+      }
     } catch (error) {
       if (error instanceof Error) {
         throw error;
