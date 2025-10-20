@@ -20,7 +20,6 @@ import SchoolsManagementScreen from './admin/SchoolsManagementScreen';
 import StudyMaterialsManagementScreen from './admin/StudyMaterialsManagementScreen';
 import UsersManagementScreen from './admin/UsersManagementScreen';
 import CommunityPostsManagementScreen from './admin/CommunityPostsManagementScreen';
-import SettingsManagementScreen from './admin/SettingsManagementScreen';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Admin'>;
 
@@ -113,7 +112,6 @@ const AdminDashboardScreen = () => {
     { id: 'materials', label: 'Study Materials', icon: 'book-outline' },
     { id: 'posts', label: 'Community Posts', icon: 'chatbubbles-outline' },
     { id: 'users', label: 'Users', icon: 'people-outline' },
-    { id: 'settings', label: 'App Settings', icon: 'settings-outline' },
   ];
 
   const statsCards = [
@@ -137,8 +135,6 @@ const AdminDashboardScreen = () => {
         return <CommunityPostsManagementScreen onBack={() => setSelectedMenu('dashboard')} />;
       case 'users':
         return <UsersManagementScreen onBack={() => setSelectedMenu('dashboard')} />;
-      case 'settings':
-        return <SettingsManagementScreen onBack={() => setSelectedMenu('dashboard')} />;
       case 'dashboard':
       default:
         return (
