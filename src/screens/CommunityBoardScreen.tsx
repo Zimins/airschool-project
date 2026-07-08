@@ -16,6 +16,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { createClient } from '@supabase/supabase-js';
 import { theme } from '../styles/theme';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import ContentDetailModal from '../components/ContentDetailModal';
+import { stripMarkdown } from '../utils/markdown';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'CommunityBoard'>;
 
@@ -40,6 +42,7 @@ const CommunityBoardScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [posts, setPosts] = useState<PostWithComments[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPost, setSelectedPost] = useState<PostWithComments | null>(null);
 
   // Initialize Supabase client
   const supabase = createClient(
@@ -100,10 +103,7 @@ const CommunityBoardScreen = () => {
   const renderPost = ({ item }: { item: PostWithComments }) => (
     <TouchableOpacity
       style={styles.postCard}
-      onPress={() => {
-        // Post detail navigation can be implemented later
-        console.log('Post clicked:', item.id);
-      }}
+      onPress={() => setSelectedPost(item)}
     >
       <View style={styles.postHeader}>
         <Text style={styles.postCategory}>{item.category}</Text>
@@ -112,7 +112,7 @@ const CommunityBoardScreen = () => {
         </Text>
       </View>
       <Text style={styles.postTitle}>{item.title}</Text>
-      <Text style={styles.postContent} numberOfLines={2}>{item.content}</Text>
+      <Text style={styles.postContent} numberOfLines={2}>{stripMarkdown(item.content)}</Text>
       <View style={styles.postFooter}>
         <Text style={styles.postAuthor}>by {item.author_name}</Text>
         <View style={styles.postStats}>
@@ -209,6 +209,18 @@ const CommunityBoardScreen = () => {
       <TouchableOpacity style={styles.fab}>
         <Ionicons name="add" size={24} color="white" />
       </TouchableOpacity>
+
+      {selectedPost && (
+        <ContentDetailModal
+          visible={true}
+          onClose={() => setSelectedPost(null)}
+          title={selectedPost.title}
+          category={selectedPost.category}
+          author={selectedPost.author_name}
+          date={new Date(selectedPost.created_at).toLocaleDateString()}
+          content={selectedPost.content}
+        />
+      )}
     </View>
   );
 };

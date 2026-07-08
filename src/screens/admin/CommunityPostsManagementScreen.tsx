@@ -11,8 +11,10 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Markdown from 'react-native-markdown-display';
 import { theme } from '../../styles/theme';
 import { createClient } from '@supabase/supabase-js';
+import { stripMarkdown } from '../../utils/markdown';
 
 interface CommunityPost {
   id: string;
@@ -194,7 +196,7 @@ const CommunityPostsManagementScreen: React.FC<CommunityPostsManagementScreenPro
                 <Text style={styles.postTitle}>{post.title}</Text>
                 <Text style={styles.authorText}>by {post.author_name}</Text>
                 <Text style={styles.postContent} numberOfLines={2}>
-                  {post.content}
+                  {stripMarkdown(post.content)}
                 </Text>
                 <View style={styles.statsRow}>
                   <View style={styles.stat}>
@@ -266,7 +268,7 @@ const CommunityPostsManagementScreen: React.FC<CommunityPostsManagementScreenPro
                   </View>
                   <View style={styles.detailSection}>
                     <Text style={styles.detailLabel}>Content</Text>
-                    <Text style={styles.detailContent}>{selectedPost.content}</Text>
+                    <Markdown>{selectedPost.content}</Markdown>
                   </View>
                   <View style={styles.statsRow}>
                     <View style={styles.stat}>

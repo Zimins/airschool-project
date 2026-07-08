@@ -16,6 +16,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { createClient } from '@supabase/supabase-js';
 import { theme } from '../styles/theme';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import ContentDetailModal from '../components/ContentDetailModal';
+import { stripMarkdown } from '../utils/markdown';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'StudyBoard'>;
 
@@ -38,6 +40,7 @@ const StudyBoardScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [materials, setMaterials] = useState<StudyMaterial[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMaterial, setSelectedMaterial] = useState<StudyMaterial | null>(null);
 
   // Initialize Supabase client
   const supabase = createClient(
@@ -80,10 +83,7 @@ const StudyBoardScreen = () => {
   const renderMaterial = ({ item }: { item: StudyMaterial }) => (
     <TouchableOpacity
       style={styles.materialCard}
-      onPress={() => {
-        // Material detail navigation can be implemented later
-        console.log('Study material clicked:', item.id);
-      }}
+      onPress={() => setSelectedMaterial(item)}
     >
       <View style={styles.materialHeader}>
         <Text style={styles.materialCategory}>{item.category}</Text>
@@ -92,7 +92,7 @@ const StudyBoardScreen = () => {
         </Text>
       </View>
       <Text style={styles.materialTitle}>{item.title}</Text>
-      <Text style={styles.materialContent} numberOfLines={2}>{item.content}</Text>
+      <Text style={styles.materialContent} numberOfLines={2}>{stripMarkdown(item.content)}</Text>
       <View style={styles.materialFooter}>
         <Text style={styles.materialAuthor}>by {item.author}</Text>
         <View style={styles.materialStats}>
@@ -195,6 +195,18 @@ const StudyBoardScreen = () => {
       <TouchableOpacity style={styles.fab}>
         <Ionicons name="add" size={24} color="white" />
       </TouchableOpacity>
+
+      {selectedMaterial && (
+        <ContentDetailModal
+          visible={true}
+          onClose={() => setSelectedMaterial(null)}
+          title={selectedMaterial.title}
+          category={selectedMaterial.category}
+          author={selectedMaterial.author}
+          date={new Date(selectedMaterial.created_at).toLocaleDateString()}
+          content={selectedMaterial.content}
+        />
+      )}
     </View>
   );
 };

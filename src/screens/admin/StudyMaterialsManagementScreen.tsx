@@ -328,10 +328,13 @@ const StudyMaterialsManagementScreen: React.FC<StudyMaterialsManagementScreenPro
                 style={[styles.input, styles.textArea]}
                 value={formData.content}
                 onChangeText={(text) => setFormData({ ...formData, content: text })}
-                placeholder="Enter material content"
+                placeholder="Enter material content (Markdown supported)"
                 multiline
                 numberOfLines={6}
               />
+              <Text style={styles.helperText}>
+                Markdown supported: # heading, **bold**, *italic*, - list, [link](url), ``` code ```
+              </Text>
             </View>
 
             <View style={styles.formGroup}>
@@ -641,6 +644,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.colors.text,
     marginBottom: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: 4,
   },
   input: {
     borderWidth: 1,
