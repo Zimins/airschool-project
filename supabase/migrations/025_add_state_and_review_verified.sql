@@ -34,8 +34,10 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_reviews_is_verified ON reviews (is_verified);
 
--- NOTE: the reviews table currently has no RLS. The "Verified" control is gated
--- in the UI to admins only. If you want to ENFORCE admin-only verification on the
--- server, enable RLS on reviews and add SELECT (public) / INSERT (authenticated) /
--- UPDATE (admin) policies — doing so without a SELECT policy would break public
--- review reads, so it is intentionally left out of this migration.
+-- NOTE: the reviews table HAS RLS enabled with two policies:
+--   "Allow admin full access"  — requires auth.uid() to exist in admin_users
+--   "Allow public read approved reviews" — SELECT only where status = 'approved'
+-- So the Verified toggle is enforced server-side: it only persists for users
+-- present in admin_users (the app's user_metadata.role gate alone is not enough).
+-- There is no INSERT policy for regular users, so non-admin review submission
+-- is currently blocked by RLS — a separate, pre-existing gap.
