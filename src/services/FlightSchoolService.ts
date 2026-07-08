@@ -109,7 +109,7 @@ export class FlightSchoolService {
       const { data: reviewsData, error: reviewsError } = await this.supabase
         .from('reviews')
         .select('*')
-        .eq('flight_school_id', schoolId)
+        .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
 
       if (reviewsError) {
@@ -164,7 +164,7 @@ export class FlightSchoolService {
         .from('reviews')
         .insert([
           {
-            flight_school_id: schoolId,
+            school_id: schoolId,
             user_id: userId,
             user_name: userName,
             user_avatar: `https://i.pravatar.cc/150?u=${userName}`,
@@ -196,13 +196,22 @@ export class FlightSchoolService {
    */
   async setReviewVerified(reviewId: string, verified: boolean): Promise<boolean> {
     try {
-      const { error } = await this.supabase
+      const { data, error } = await this.supabase
         .from('reviews')
         .update({ is_verified: verified })
-        .eq('id', reviewId);
+        .eq('id', reviewId)
+        .select('id');
 
       if (error) {
         console.error('Error updating review verification:', error.message);
+        return false;
+      }
+
+      // RLS blocks show up as a 0-row update with no error, not as a failure.
+      if (!data || data.length === 0) {
+        console.error(
+          'Review verification update affected no rows — the signed-in user is likely missing from admin_users (RLS).',
+        );
         return false;
       }
 
@@ -256,7 +265,7 @@ export class FlightSchoolService {
 
       return {
         id: review.id,
-        schoolId: review.flight_school_id,
+        schoolId: review.school_id,
         userName: displayName,
         userAvatar: review.user_avatar,
         rating: review.rating,

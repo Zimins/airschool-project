@@ -71,7 +71,7 @@ export interface DatabaseFlightSchool {
 
 export interface DatabaseProgram {
   id: string;
-  flight_school_id: string;
+  school_id: string;
   name: string;
   duration?: string;
   description?: string;
@@ -81,7 +81,7 @@ export interface DatabaseProgram {
 
 export interface DatabaseReview {
   id: string;
-  flight_school_id: string;
+  school_id: string;
   user_name: string;
   user_avatar?: string;
   rating: number;
