@@ -109,7 +109,7 @@ export class FlightSchoolService {
       const { data: reviewsData, error: reviewsError } = await this.supabase
         .from('reviews')
         .select('*')
-        .eq('school_id', schoolId)
+        .eq('flight_school_id', schoolId)
         .order('created_at', { ascending: false });
 
       if (reviewsError) {
@@ -172,16 +172,10 @@ export class FlightSchoolService {
             title,
             content,
             helpful_count: 0,
+            is_verified: false,
           },
         ])
-        .select(
-          `
-          *,
-          profiles!user_id (
-            nickname
-          )
-        `,
-        )
+        .select('*')
         .single();
 
       if (error) {
@@ -197,6 +191,29 @@ export class FlightSchoolService {
   }
 
   /**
+   * Set the "verified" flag on a review (admin-only action, gated in the UI).
+   * Returns true on success.
+   */
+  async setReviewVerified(reviewId: string, verified: boolean): Promise<boolean> {
+    try {
+      const { error } = await this.supabase
+        .from('reviews')
+        .update({ is_verified: verified })
+        .eq('id', reviewId);
+
+      if (error) {
+        console.error('Error updating review verification:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Set review verified service error:', error);
+      return false;
+    }
+  }
+
+  /**
    * Format flight schools data from database to app format
    */
   private formatFlightSchoolsData(data: any[]): FlightSchool[] {
@@ -205,6 +222,7 @@ export class FlightSchoolService {
       name: school.name,
       location: school.location,
       city: school.city,
+      state: school.state || undefined,
       country: school.country,
       rating: school.rating,
       reviewCount: school.review_count,
@@ -246,6 +264,7 @@ export class FlightSchoolService {
         content: review.content,
         date: new Date(review.created_at).toISOString().split('T')[0],
         helpful: review.helpful_count,
+        verified: review.is_verified ?? false,
       };
     });
   }

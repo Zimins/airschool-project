@@ -34,8 +34,8 @@ CREATE POLICY "Only admins can update app settings"
 -- Insert default app name
 INSERT INTO app_settings (setting_key, setting_value, description)
 VALUES
-  ('app_name', 'PreflightSchool', 'The name of the application displayed throughout the site'),
-  ('app_tagline', 'Start your flight dream', 'The tagline shown on login and signup pages')
+  ('app_name', 'Preflightnet', 'The name of the application displayed throughout the site'),
+  ('app_tagline', 'Preflight Your Career, Network Your Future', 'The tagline shown on login and signup pages')
 ON CONFLICT (setting_key) DO NOTHING;
 
 -- Create function to update settings timestamp

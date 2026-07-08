@@ -10,18 +10,18 @@ import {
   TextInput,
   Modal,
   Platform,
-  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
 import { createClient } from '@supabase/supabase-js';
-import { pickAndUploadSchoolImage } from '../../services/ImageUploadService';
+import { US_STATES } from '../../data/usStates';
 
 interface School {
   id: string;
   name: string;
   location: string;
   city: string;
+  state?: string;
   country: string;
   rating?: number;
   review_count?: number;
@@ -38,17 +38,17 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [stateDropdownVisible, setStateDropdownVisible] = useState(false);
   const [formData, setFormData] = useState<Partial<School>>({
     name: '',
     location: '',
     city: '',
+    state: '',
     country: '',
     description: '',
     contact_email: '',
     contact_phone: '',
     contact_website: '',
-    image_url: '',
   });
 
   const supabase = createClient(
@@ -84,6 +84,7 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
       name: '',
       location: '',
       city: '',
+      state: '',
       country: '',
       description: '',
       contact_email: '',
@@ -104,62 +105,52 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
       contact_email: school.contact_email || '',
       contact_phone: school.contact_phone || '',
       contact_website: school.contact_website || '',
-      image_url: school.image_url || '',
+      state: school.state || '',
     });
     setModalVisible(true);
   };
 
-  const handleImageUpload = async () => {
+  const deleteSchool = async (schoolId: string) => {
     try {
-      setUploadingImage(true);
+      const { error } = await supabase
+        .from('flight_schools')
+        .delete()
+        .eq('id', schoolId);
 
-      // Generate temporary ID for new schools
-      const schoolId = editingSchool?.id || `temp_${Date.now()}`;
+      if (error) throw error;
 
-      const result = await pickAndUploadSchoolImage(schoolId);
-
-      if (result.success && result.url) {
-        setFormData({ ...formData, image_url: result.url });
-        Alert.alert('Success', 'Image uploaded successfully');
+      if (Platform.OS === 'web') {
+        window.alert('School deleted successfully');
       } else {
-        Alert.alert('Error', result.error || 'Failed to upload image');
+        Alert.alert('Success', 'School deleted successfully');
       }
+      fetchSchools();
     } catch (error) {
-      console.error('Error uploading image:', error);
-      Alert.alert('Error', 'Failed to upload image');
-    } finally {
-      setUploadingImage(false);
+      console.error('Error deleting school:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Failed to delete school');
+      } else {
+        Alert.alert('Error', 'Failed to delete school');
+      }
     }
   };
 
-  const handleDeleteSchool = async (schoolId: string, schoolName: string) => {
-    Alert.alert(
-      'Delete School',
-      `Are you sure you want to delete "${schoolName}"? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from('flight_schools')
-                .delete()
-                .eq('id', schoolId);
+  const handleDeleteSchool = (schoolId: string, schoolName: string) => {
+    const message = `Are you sure you want to delete "${schoolName}"? This action cannot be undone.`;
 
-              if (error) throw error;
+    // Alert.alert button callbacks do not fire on react-native-web, so use
+    // window.confirm there (same pattern as ProfileMenu).
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        deleteSchool(schoolId);
+      }
+      return;
+    }
 
-              Alert.alert('Success', 'School deleted successfully');
-              fetchSchools();
-            } catch (error) {
-              console.error('Error deleting school:', error);
-              Alert.alert('Error', 'Failed to delete school');
-            }
-          },
-        },
-      ]
-    );
+    Alert.alert('Delete School', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteSchool(schoolId) },
+    ]);
   };
 
   const handleSaveSchool = async () => {
@@ -178,12 +169,12 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
             name: formData.name,
             location: `${formData.city}, ${formData.country}`,
             city: formData.city,
+            state: formData.state?.trim() || null,
             country: formData.country,
             description: formData.description || null,
             contact_email: formData.contact_email?.trim() || null,
             contact_phone: formData.contact_phone?.trim() || null,
             contact_website: formData.contact_website?.trim() || null,
-            image_url: formData.image_url?.trim() || null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingSchool.id);
@@ -196,12 +187,12 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
           name: formData.name,
           location: `${formData.city}, ${formData.country}`,
           city: formData.city,
+          state: formData.state?.trim() || null,
           country: formData.country,
           description: formData.description || null,
           contact_email: formData.contact_email?.trim() || null,
           contact_phone: formData.contact_phone?.trim() || null,
           contact_website: formData.contact_website?.trim() || null,
-          image_url: formData.image_url?.trim() || null,
           rating: 0,
           review_count: 0,
         });
@@ -314,6 +305,17 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
                 placeholderTextColor={theme.colors.textSecondary}
               />
 
+              <Text style={styles.label}>US State</Text>
+              <TouchableOpacity
+                style={styles.dropdownTrigger}
+                onPress={() => setStateDropdownVisible(true)}
+              >
+                <Text style={formData.state ? styles.dropdownTriggerText : styles.dropdownPlaceholder}>
+                  {formData.state || 'Select a US state (optional)'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+
               <Text style={styles.label}>Description</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
@@ -356,46 +358,6 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
                 keyboardType="url"
                 autoCapitalize="none"
               />
-
-              <Text style={styles.label}>Thumbnail Image</Text>
-              <View style={styles.imageSection}>
-                {formData.image_url ? (
-                  <View style={styles.imagePreviewContainer}>
-                    <Image
-                      source={{ uri: formData.image_url }}
-                      style={styles.imagePreview}
-                      resizeMode="cover"
-                    />
-                    <TouchableOpacity
-                      style={styles.removeImageButton}
-                      onPress={() => setFormData({ ...formData, image_url: '' })}
-                    >
-                      <Ionicons name="close-circle" size={24} color="#ef4444" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.uploadPlaceholder}>
-                    <Ionicons name="image-outline" size={48} color={theme.colors.textSecondary} />
-                    <Text style={styles.uploadPlaceholderText}>No image uploaded</Text>
-                  </View>
-                )}
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={handleImageUpload}
-                  disabled={uploadingImage}
-                >
-                  {uploadingImage ? (
-                    <ActivityIndicator color={theme.colors.white} />
-                  ) : (
-                    <>
-                      <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.white} />
-                      <Text style={styles.uploadButtonText}>
-                        {formData.image_url ? 'Change Image' : 'Upload Image'}
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -416,6 +378,65 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* US State picker */}
+      <Modal
+        visible={stateDropdownVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setStateDropdownVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setStateDropdownVisible(false)}
+        >
+          <View style={styles.stateModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select US State</Text>
+              <TouchableOpacity onPress={() => setStateDropdownVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.stateList}>
+              <TouchableOpacity
+                style={styles.stateOption}
+                onPress={() => {
+                  setFormData({ ...formData, state: '' });
+                  setStateDropdownVisible(false);
+                }}
+              >
+                <Text style={styles.stateOptionPlaceholder}>None (not a US state)</Text>
+                {!formData.state && (
+                  <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
+                )}
+              </TouchableOpacity>
+              {US_STATES.map((state) => (
+                <TouchableOpacity
+                  key={state}
+                  style={styles.stateOption}
+                  onPress={() => {
+                    setFormData({ ...formData, state });
+                    setStateDropdownVisible(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.stateOptionText,
+                      formData.state === state && styles.stateOptionTextSelected,
+                    ]}
+                  >
+                    {state}
+                  </Text>
+                  {formData.state === state && (
+                    <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -593,58 +614,69 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  // Image upload styles
-  imageSection: {
-    marginBottom: 20,
-  },
-  imagePreviewContainer: {
-    position: 'relative',
-    marginBottom: 12,
-  },
-  imagePreview: {
-    width: '100%',
-    height: 200,
-    borderRadius: 12,
-    backgroundColor: theme.colors.border,
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: theme.colors.white,
-    borderRadius: 12,
-  },
-  uploadPlaceholder: {
-    width: '100%',
-    height: 200,
-    borderRadius: 12,
-    backgroundColor: theme.colors.background,
-    borderWidth: 2,
-    borderColor: theme.colors.border,
-    borderStyle: 'dashed',
-    justifyContent: 'center',
+  // State dropdown styles
+  dropdownTrigger: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: theme.colors.white,
   },
-  uploadPlaceholderText: {
-    marginTop: 8,
+  dropdownTriggerText: {
+    fontSize: 14,
+    color: theme.colors.text,
+  },
+  dropdownPlaceholder: {
     fontSize: 14,
     color: theme.colors.textSecondary,
   },
-  uploadButton: {
+  stateModalContent: {
+    backgroundColor: theme.colors.white,
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '70%',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+      },
+    }),
+  },
+  stateList: {
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
+  stateOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
-  uploadButtonText: {
-    color: theme.colors.white,
-    fontSize: 14,
+  stateOptionText: {
+    fontSize: 15,
+    color: theme.colors.text,
+  },
+  stateOptionTextSelected: {
+    color: theme.colors.primary,
     fontWeight: '600',
+  },
+  stateOptionPlaceholder: {
+    fontSize: 15,
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
   },
 });
 

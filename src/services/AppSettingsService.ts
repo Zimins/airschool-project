@@ -46,8 +46,8 @@ export class AppSettingsService {
         console.error('Error fetching app settings:', error);
         // Return defaults if fetch fails
         return {
-          app_name: 'PreflightSchool',
-          app_tagline: 'Start your flight dream',
+          app_name: 'Preflightnet',
+          app_tagline: 'Preflight Your Career, Network Your Future',
         };
       }
 
@@ -58,14 +58,14 @@ export class AppSettingsService {
       });
 
       return {
-        app_name: settings.app_name || 'PreflightSchool',
-        app_tagline: settings.app_tagline || 'Start your flight dream',
+        app_name: settings.app_name || 'Preflightnet',
+        app_tagline: settings.app_tagline || 'Preflight Your Career, Network Your Future',
       };
     } catch (error) {
       console.error('Error in getSettings:', error);
       return {
-        app_name: 'PreflightSchool',
-        app_tagline: 'Start your flight dream',
+        app_name: 'Preflightnet',
+        app_tagline: 'Preflight Your Career, Network Your Future',
       };
     }
   }

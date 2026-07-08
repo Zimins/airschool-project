@@ -148,7 +148,7 @@ const SignupScreen = () => {
 
         <View style={styles.header}>
           <Text style={styles.title}>Sign Up</Text>
-          <Text style={styles.subtitle}>Start your flight dream with {settings.app_name}</Text>
+          <Text style={styles.subtitle}>Preflight your career with {settings.app_name}</Text>
         </View>
 
         <View style={styles.form}>

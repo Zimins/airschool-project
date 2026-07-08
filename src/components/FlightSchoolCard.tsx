@@ -13,7 +13,7 @@ import { theme } from '../styles/theme';
 
 interface FlightSchoolCardProps {
   school: FlightSchool;
-  onPress: () => void;
+  onPress: (schoolId: string) => void;
 }
 
 const FlightSchoolCard: React.FC<FlightSchoolCardProps> = ({ school, onPress }) => {
@@ -29,7 +29,7 @@ const FlightSchoolCard: React.FC<FlightSchoolCardProps> = ({ school, onPress }) 
   };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.95}>
+    <TouchableOpacity style={styles.card} onPress={() => onPress(school.id)} activeOpacity={0.95}>
       {school.image ? (
         <View style={styles.imageContainer}>
           <Image
@@ -180,4 +180,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FlightSchoolCard;
+export default React.memo(FlightSchoolCard);

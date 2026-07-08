@@ -14,8 +14,8 @@ interface AppSettingsContextType {
 
 const AppSettingsContext = createContext<AppSettingsContextType>({
   settings: {
-    app_name: 'PreflightSchool',
-    app_tagline: 'Start your flight dream',
+    app_name: 'Preflightnet',
+    app_tagline: 'Preflight Your Career, Network Your Future',
   },
   refreshSettings: async () => {},
   isLoading: true,
@@ -29,8 +29,8 @@ interface AppSettingsProviderProps {
 
 export const AppSettingsProvider: React.FC<AppSettingsProviderProps> = ({ children }) => {
   const [settings, setSettings] = useState<AppSettings>({
-    app_name: 'PreflightSchool',
-    app_tagline: 'Start your flight dream',
+    app_name: 'Preflightnet',
+    app_tagline: 'Preflight Your Career, Network Your Future',
   });
   const [isLoading, setIsLoading] = useState(true);
   const [appSettingsService] = useState(() => new AppSettingsService());

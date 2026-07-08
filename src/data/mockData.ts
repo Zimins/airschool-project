@@ -3,6 +3,7 @@ export interface FlightSchool {
   name: string;
   location: string;
   city: string;
+  state?: string;
   country: string;
   rating: number;
   reviewCount: number;
@@ -37,6 +38,7 @@ export interface Review {
   content: string;
   date: string;
   helpful: number;
+  verified?: boolean;
 }
 
 export const mockFlightSchools: FlightSchool[] = [

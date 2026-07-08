@@ -12,6 +12,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Modal,
+  Alert,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -34,6 +35,7 @@ const FlightSchoolDetailScreen = () => {
   const navigation = useNavigation<Props['navigation']>();
   const { schoolId } = route.params;
   const { state: authState } = useAuth();
+  const isAdmin = authState.session?.role === 'admin';
 
   const [school, setSchool] = useState<FlightSchool | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -43,6 +45,7 @@ const FlightSchoolDetailScreen = () => {
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [loginRequiredModalVisible, setLoginRequiredModalVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [flightSchoolService] = useState(() => new FlightSchoolService());
 
   useEffect(() => {
@@ -93,6 +96,60 @@ const FlightSchoolDetailScreen = () => {
     } else {
       setReviewModalVisible(true);
     }
+  };
+
+  // Re-fetch the school (for updated rating/review_count) and its reviews
+  // without flashing the full-screen loader.
+  const reloadReviews = async () => {
+    try {
+      const [schoolData, reviewsData] = await Promise.all([
+        flightSchoolService.getFlightSchoolById(schoolId),
+        flightSchoolService.getReviewsForSchool(schoolId),
+      ]);
+      if (schoolData) setSchool(schoolData);
+      setReviews(reviewsData);
+    } catch (err) {
+      console.warn('⚠️ Could not reload reviews:', err);
+    }
+  };
+
+  const handleSubmitReview = async ({
+    rating,
+    title,
+    content,
+  }: {
+    rating: number;
+    title: string;
+    content: string;
+  }) => {
+    if (!authState.user) {
+      throw new Error('You must be logged in to submit a review.');
+    }
+    const displayName =
+      authState.user.nickname || authState.user.email?.split('@')[0] || 'Anonymous';
+    await flightSchoolService.addReview(schoolId, authState.user.id, displayName, rating, title, content);
+    await reloadReviews();
+  };
+
+  const handleToggleVerify = async (review: Review, nextVerified: boolean) => {
+    setVerifyingId(review.id);
+    // Optimistic update for snappy admin UX.
+    setReviews(prev =>
+      prev.map(r => (r.id === review.id ? { ...r, verified: nextVerified } : r)),
+    );
+    const ok = await flightSchoolService.setReviewVerified(review.id, nextVerified);
+    if (!ok) {
+      // Revert on failure.
+      setReviews(prev =>
+        prev.map(r => (r.id === review.id ? { ...r, verified: !nextVerified } : r)),
+      );
+      if (Platform.OS === 'web') {
+        window.alert('Failed to update verification. Please try again.');
+      } else {
+        Alert.alert('Error', 'Failed to update verification. Please try again.');
+      }
+    }
+    setVerifyingId(null);
   };
 
   if (isLoading) {
@@ -239,7 +296,13 @@ const FlightSchoolDetailScreen = () => {
             </View>
             
             {reviews.map((review) => (
-              <ReviewCard key={review.id} review={review} />
+              <ReviewCard
+                key={review.id}
+                review={review}
+                isAdmin={isAdmin}
+                onToggleVerify={handleToggleVerify}
+                verifying={verifyingId === review.id}
+              />
             ))}
           </View>
         );
@@ -250,6 +313,7 @@ const FlightSchoolDetailScreen = () => {
   };
 
   return (
+    <View style={styles.screen}>
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Hero Section */}
       <View style={styles.heroSection}>
@@ -308,6 +372,17 @@ const FlightSchoolDetailScreen = () => {
 
       {/* Tab Content */}
       {renderTabContent()}
+    </ScrollView>
+
+      {/* Request more information — drives signup (user acquisition) */}
+      <TouchableOpacity
+        style={styles.requestInfoButton}
+        onPress={() => navigation.navigate('Signup' as never)}
+        activeOpacity={0.9}
+      >
+        <Ionicons name="information-circle-outline" size={20} color="white" />
+        <Text style={styles.requestInfoButtonText}>Request more information</Text>
+      </TouchableOpacity>
 
       {/* Review Modal */}
       <ReviewModal
@@ -315,6 +390,7 @@ const FlightSchoolDetailScreen = () => {
         onClose={() => setReviewModalVisible(false)}
         schoolId={schoolId}
         schoolName={school.name}
+        onSubmit={handleSubmitReview}
       />
 
       {/* Login Required Modal */}
@@ -351,14 +427,40 @@ const FlightSchoolDetailScreen = () => {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  requestInfoButton: {
+    position: 'absolute',
+    left: theme.spacing.lg,
+    right: theme.spacing.lg,
+    bottom: theme.spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.full,
+    ...theme.shadow.lg,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+    } as any),
+  },
+  requestInfoButtonText: {
+    color: 'white',
+    fontSize: theme.fontSize.base,
+    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,

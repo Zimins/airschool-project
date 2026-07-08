@@ -8,6 +8,7 @@ export interface FlightSchool {
   name: string;
   location: string;
   city: string;
+  state?: string;
   country: string;
   rating: number;
   reviewCount: number;
@@ -42,6 +43,7 @@ export interface Review {
   content: string;
   date: string;
   helpful: number;
+  verified?: boolean;
 }
 
 export interface DatabaseFlightSchool {
@@ -49,6 +51,7 @@ export interface DatabaseFlightSchool {
   name: string;
   location: string;
   city: string;
+  state?: string;
   country: string;
   rating: number;
   review_count: number;
@@ -85,6 +88,7 @@ export interface DatabaseReview {
   title: string;
   content: string;
   helpful_count: number;
+  is_verified?: boolean;
   created_at: string;
   updated_at: string;
 }

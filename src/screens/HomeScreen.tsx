@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePasswordReset } from '../../App';
 import { AuthService } from '../services/AuthService';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { US_STATES } from '../data/usStates';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -40,10 +41,14 @@ const HomeScreen = () => {
   const { settings } = useAppSettings();
   const isAdmin = session?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
+  // Deferred query keeps typing responsive: the expensive filtering + list
+  // update runs against this lagging value instead of blocking every keystroke.
+  const deferredQuery = useDeferredValue(searchQuery);
   const [isLoading, setIsLoading] = useState(true);
   const [filteredSchools, setFilteredSchools] = useState<FlightSchool[]>([]);
   const [allSchools, setAllSchools] = useState<FlightSchool[]>([]);
   const [selectedTag, setSelectedTag] = useState('All');
+  const [selectedState, setSelectedState] = useState('All');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [flightSchoolService] = useState(() => new FlightSchoolService());
@@ -64,6 +69,17 @@ const HomeScreen = () => {
     return ['All', ...uniqueCities];
   }, [allSchools]);
 
+  // US state tags — only the states that actually have schools, ordered by the
+  // canonical US_STATES list. Empty (besides "All") when no school has a state,
+  // in which case the state filter bar is hidden.
+  const stateTags = useMemo(() => {
+    const present = new Set(
+      allSchools.map(school => school.state).filter((s): s is string => Boolean(s)),
+    );
+    const ordered = US_STATES.filter(state => present.has(state));
+    return ['All', ...ordered];
+  }, [allSchools]);
+
   // Auto-open profile settings when coming from password reset email
   useEffect(() => {
     if (isFromPasswordReset && session) {
@@ -81,25 +97,31 @@ const HomeScreen = () => {
     if (!isLoading && allSchools.length > 0) {
       let filtered = allSchools;
 
-      // Filter by tag with normalized comparison
+      // Filter by city tag with normalized comparison
       if (selectedTag !== 'All') {
         filtered = filtered.filter(school =>
           normalizeCity(school.city) === normalizeCity(selectedTag)
         );
       }
 
-      // Filter by search query
-      if (searchQuery.trim()) {
+      // Filter by US state
+      if (selectedState !== 'All') {
+        filtered = filtered.filter(school => school.state === selectedState);
+      }
+
+      // Filter by search query (uses the deferred value for responsiveness)
+      const query = deferredQuery.trim().toLowerCase();
+      if (query) {
         filtered = filtered.filter(
           school =>
-            school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            school.location.toLowerCase().includes(searchQuery.toLowerCase()),
+            school.name.toLowerCase().includes(query) ||
+            school.location.toLowerCase().includes(query),
         );
       }
 
       setFilteredSchools(filtered);
     }
-  }, [searchQuery, selectedTag, allSchools, isLoading]);
+  }, [deferredQuery, selectedTag, selectedState, allSchools, isLoading]);
 
   const loadFlightSchools = async () => {
     if (__DEV__) {
@@ -129,9 +151,12 @@ const HomeScreen = () => {
     }
   };
 
-  const handleSchoolPress = (schoolId: string) => {
-    navigation.navigate('FlightSchoolDetail', { schoolId });
-  };
+  const handleSchoolPress = useCallback(
+    (schoolId: string) => {
+      navigation.navigate('FlightSchoolDetail', { schoolId });
+    },
+    [navigation],
+  );
 
   const handleSocialMediaPress = async (platform: 'instagram' | 'tiktok') => {
     const urls = {
@@ -229,8 +254,11 @@ const HomeScreen = () => {
     }
   };
 
-  const renderHeader = () => (
-    <View style={styles.headerWrapper}>
+  // Heavy gradient header — memoized so it is NOT rebuilt on every keystroke.
+  // The search input lives below this memo, so typing only re-renders the
+  // cheap input row, not the gradient/title/buttons subtree.
+  const headerGradient = useMemo(
+    () => (
       <LinearGradient
         colors={theme.colors.gradient.primary as any}
         style={styles.gradientHeader}
@@ -241,9 +269,7 @@ const HomeScreen = () => {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.headerTitle}>{settings.app_name}</Text>
-              <Text style={styles.headerTagline}>
-                {user ? `Welcome, ${user.email?.split('@')[0]}!` : "Korea's #1 Flight School Platform"}
-              </Text>
+              <Text style={styles.headerTagline}>{settings.app_tagline}</Text>
             </View>
             <View style={styles.headerButtons}>
               {isAdmin && (
@@ -266,6 +292,13 @@ const HomeScreen = () => {
           <Text style={styles.headerSubtitle}>Find the perfect partner to realize your aviation dreams</Text>
         </View>
       </LinearGradient>
+    ),
+    [settings.app_name, settings.app_tagline, isAdmin, user, navigation],
+  );
+
+  const renderHeader = () => (
+    <View style={styles.headerWrapper}>
+      {headerGradient}
 
       <View style={styles.searchSection}>
         <View style={styles.searchContainer}>
@@ -302,7 +335,32 @@ const HomeScreen = () => {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {stateTags.length > 1 && (
+        <View style={styles.stateFilterSection}>
+          <Text style={styles.stateFilterLabel}>Filter by US State</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsContainer}>
+            {stateTags.map(state => (
+              <TouchableOpacity
+                key={state}
+                style={[styles.tagButton, selectedState === state && styles.tagButtonActive]}
+                onPress={() => setSelectedState(state)}
+              >
+                <Text style={[styles.tagText, selectedState === state && styles.tagTextActive]}>{state}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
     </View>
+  );
+
+  // Stable list callbacks so React.memo(FlightSchoolCard) actually skips
+  // re-rendering rows while typing in the search box.
+  const keyExtractor = useCallback((item: FlightSchool) => item.id, []);
+  const renderItem = useCallback(
+    ({ item }: { item: FlightSchool }) => <FlightSchoolCard school={item} onPress={handleSchoolPress} />,
+    [handleSchoolPress],
   );
 
   const renderFooter = () => (
@@ -344,9 +402,9 @@ const HomeScreen = () => {
     <View style={styles.container}>
       <FlatList
         data={filteredSchools}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => <FlightSchoolCard school={item} onPress={() => handleSchoolPress(item.id)} />}
-        ListHeaderComponent={renderHeader}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        ListHeaderComponent={renderHeader()}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={
           isLoading ? (
@@ -548,6 +606,16 @@ const styles = StyleSheet.create({
   tagsContainer: {
     paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
+  },
+  stateFilterSection: {
+    marginTop: theme.spacing.xs,
+  },
+  stateFilterLabel: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.xs,
   },
   tagButton: {
     paddingHorizontal: theme.spacing.lg,

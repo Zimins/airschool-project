@@ -18,36 +18,67 @@ interface ReviewModalProps {
   onClose: () => void;
   schoolId: string;
   schoolName: string;
+  /**
+   * Persists the review. When provided, the modal awaits it before closing and
+   * surfaces any error. Receives the validated form values.
+   */
+  onSubmit?: (data: { rating: number; title: string; content: string }) => Promise<void>;
 }
+
+const notify = (message: string) => {
+  if (Platform.OS === 'web') {
+    window.alert(message);
+  } else {
+    Alert.alert(message);
+  }
+};
 
 const ReviewModal: React.FC<ReviewModalProps> = ({
   visible,
   onClose,
   schoolId,
   schoolName,
+  onSubmit,
 }) => {
   const [rating, setRating] = useState(0);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (rating === 0) {
-      Alert.alert('Please select a rating');
+      notify('Please select a rating');
       return;
     }
     if (!title.trim()) {
-      Alert.alert('Please enter a title');
+      notify('Please enter a title');
       return;
     }
     if (!content.trim()) {
-      Alert.alert('Please enter review content');
+      notify('Please enter review content');
       return;
     }
 
-    // In a real app, this would submit to the backend
-    Alert.alert('Review submitted successfully!');
-    resetForm();
-    onClose();
+    if (!onSubmit) {
+      // No persistence wired — fall back to a simple confirmation.
+      notify('Review submitted successfully!');
+      resetForm();
+      onClose();
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await onSubmit({ rating, title: title.trim(), content: content.trim() });
+      notify('Review submitted successfully!');
+      resetForm();
+      onClose();
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      notify('Failed to submit review. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -139,10 +170,11 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
               </TouchableOpacity>
               
               <TouchableOpacity
-                style={[styles.button, styles.submitButton]}
+                style={[styles.button, styles.submitButton, submitting && styles.submitButtonDisabled]}
                 onPress={handleSubmit}
+                disabled={submitting}
               >
-                <Text style={styles.submitButtonText}>Submit</Text>
+                <Text style={styles.submitButtonText}>{submitting ? 'Submitting...' : 'Submit'}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -258,6 +290,9 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: theme.colors.primary,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
   submitButtonText: {
     color: 'white',
