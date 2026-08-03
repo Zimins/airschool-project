@@ -412,7 +412,8 @@ const HomeScreen = () => {
               <ActivityIndicator size="large" color={theme.colors.primary} />
               <Text style={styles.listLoadingText}>Loading flight schools...</Text>
             </View>
-          ) : (
+          ) : allSchools.length === 0 ? (
+            // Schools never loaded — this is a genuine data/connection failure.
             <View style={styles.emptyContainer}>
               <Ionicons name="warning-outline" size={48} color={theme.colors.error} />
               <Text style={styles.emptyText}>Database Connection Failed</Text>
@@ -421,6 +422,13 @@ const HomeScreen = () => {
                 <Ionicons name="refresh-outline" size={20} color="white" />
                 <Text style={styles.retryButtonText}>Retry</Text>
               </TouchableOpacity>
+            </View>
+          ) : (
+            // Schools loaded fine; the current search/filter just matched nothing.
+            <View style={styles.emptyContainer}>
+              <Ionicons name="search-outline" size={48} color={theme.colors.textSecondary} />
+              <Text style={styles.noResultsText}>No schools found</Text>
+              <Text style={styles.emptySubtext}>Try a different search term or filter.</Text>
             </View>
           )
         }
@@ -490,6 +498,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: theme.spacing.lg,
+  },
+  noResultsText: {
+    marginTop: theme.spacing.md,
+    fontSize: theme.fontSize.lg,
+    fontWeight: '600',
+    color: theme.colors.text,
+    textAlign: 'center',
   },
   retryButton: {
     flexDirection: 'row',
