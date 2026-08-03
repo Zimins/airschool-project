@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
@@ -75,34 +76,47 @@ const CommunityPostsManagementScreen: React.FC<CommunityPostsManagementScreenPro
     }
   };
 
-  const handleDelete = async (id: string) => {
-    Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this post? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from('community_posts')
-                .delete()
-                .eq('id', id);
+  const deletePost = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('community_posts')
+        .delete()
+        .eq('id', id);
 
-              if (error) throw error;
+      if (error) throw error;
 
-              Alert.alert('Success', 'Post deleted successfully');
-              fetchPosts();
-            } catch (error) {
-              console.error('Error deleting post:', error);
-              Alert.alert('Error', 'Failed to delete post');
-            }
-          },
-        },
-      ]
-    );
+      if (Platform.OS === 'web') {
+        window.alert('Post deleted successfully');
+      } else {
+        Alert.alert('Success', 'Post deleted successfully');
+      }
+      fetchPosts();
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Failed to delete post');
+      } else {
+        Alert.alert('Error', 'Failed to delete post');
+      }
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    const message = 'Are you sure you want to delete this post? This action cannot be undone.';
+
+    // Alert.alert button callbacks do not fire on react-native-web, so use
+    // window.confirm there (same pattern as SchoolsManagementScreen).
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        deletePost(id);
+      }
+      return;
+    }
+
+    Alert.alert('Confirm Delete', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deletePost(id) },
+    ]);
   };
 
   const handleViewDetails = (post: CommunityPost) => {

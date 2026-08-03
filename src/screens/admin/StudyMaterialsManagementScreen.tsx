@@ -148,33 +148,47 @@ const StudyMaterialsManagementScreen: React.FC<StudyMaterialsManagementScreenPro
     setShowForm(true);
   };
 
-  const handleDelete = async (id: string) => {
-    Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this study material?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from('study_materials')
-                .delete()
-                .eq('id', id);
+  const deleteMaterial = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('study_materials')
+        .delete()
+        .eq('id', id);
 
-              if (error) throw error;
-              Alert.alert('Success', 'Study material deleted successfully');
-              fetchMaterials();
-            } catch (error: any) {
-              console.error('Error deleting material:', error);
-              Alert.alert('Error', 'Failed to delete study material');
-            }
-          },
-        },
-      ]
-    );
+      if (error) throw error;
+
+      if (Platform.OS === 'web') {
+        window.alert('Study material deleted successfully');
+      } else {
+        Alert.alert('Success', 'Study material deleted successfully');
+      }
+      fetchMaterials();
+    } catch (error: any) {
+      console.error('Error deleting material:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Failed to delete study material');
+      } else {
+        Alert.alert('Error', 'Failed to delete study material');
+      }
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    const message = 'Are you sure you want to delete this study material?';
+
+    // Alert.alert button callbacks do not fire on react-native-web, so use
+    // window.confirm there (same pattern as SchoolsManagementScreen).
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        deleteMaterial(id);
+      }
+      return;
+    }
+
+    Alert.alert('Confirm Delete', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteMaterial(id) },
+    ]);
   };
 
   const handleCancel = () => {
