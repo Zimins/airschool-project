@@ -47,7 +47,7 @@ export class AppSettingsService {
         // Return defaults if fetch fails
         return {
           app_name: 'Preflightnet',
-          app_tagline: 'Preflight Your Career, Network Your Future',
+          app_tagline: 'Preflight your career, Network your future',
         };
       }
 
@@ -59,13 +59,13 @@ export class AppSettingsService {
 
       return {
         app_name: settings.app_name || 'Preflightnet',
-        app_tagline: settings.app_tagline || 'Preflight Your Career, Network Your Future',
+        app_tagline: settings.app_tagline || 'Preflight your career, Network your future',
       };
     } catch (error) {
       console.error('Error in getSettings:', error);
       return {
         app_name: 'Preflightnet',
-        app_tagline: 'Preflight Your Career, Network Your Future',
+        app_tagline: 'Preflight your career, Network your future',
       };
     }
   }
