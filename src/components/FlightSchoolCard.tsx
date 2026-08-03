@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,21 +29,6 @@ const FlightSchoolCard: React.FC<FlightSchoolCardProps> = ({ school, onPress }) 
 
   return (
     <TouchableOpacity style={styles.card} onPress={() => onPress(school.id)} activeOpacity={0.95}>
-      {school.image ? (
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: school.image }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-        </View>
-      ) : (
-        <View style={[styles.imageContainer, styles.noImageContainer]}>
-          <Ionicons name="airplane" size={48} color={theme.colors.textSecondary} />
-          <Text style={styles.noImageText}>No Image Available</Text>
-        </View>
-      )}
-      
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.name} numberOfLines={1}>{school.name}</Text>
@@ -93,25 +77,6 @@ const styles = StyleSheet.create({
         boxShadow: theme.shadow.xl.shadowOffset.height + 'px ' + theme.shadow.xl.shadowOffset.width + 'px ' + theme.shadow.xl.shadowRadius + 'px rgba(0,0,0,' + theme.shadow.xl.shadowOpacity + ')',
       },
     }),
-  },
-  imageContainer: {
-    position: 'relative',
-    height: 180,
-    overflow: 'hidden',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  noImageContainer: {
-    backgroundColor: theme.colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  noImageText: {
-    marginTop: theme.spacing.sm,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
   },
   content: {
     padding: theme.spacing.lg,
