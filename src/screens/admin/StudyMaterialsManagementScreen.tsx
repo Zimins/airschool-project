@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../lib/supabase';
 
 interface StudyMaterial {
   id: string;
@@ -51,10 +51,6 @@ const StudyMaterialsManagementScreen: React.FC<StudyMaterialsManagementScreenPro
   const categories = ['Written Test', 'Language', 'Navigation', 'Weather', 'Aircraft', 'Other'];
 
   // Initialize Supabase client
-  const supabase = createClient(
-    process.env.EXPO_PUBLIC_SUPABASE_URL || '',
-    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
 
   useEffect(() => {
     fetchMaterials();

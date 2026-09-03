@@ -3,21 +3,17 @@
  * Handles all flight school related API calls to Supabase
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import { FlightSchool, Program, Review } from '../types/flightSchool';
 
 export class FlightSchoolService {
   private supabase: SupabaseClient;
 
   constructor() {
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration missing. Check environment variables.');
-    }
-
-    this.supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Reuse the single shared Supabase client (see src/lib/supabase.ts) to
+    // avoid spawning duplicate GoTrueClient instances.
+    this.supabase = supabase;
   }
 
   /**
@@ -225,11 +221,23 @@ export class FlightSchoolService {
   /**
    * Format flight schools data from database to app format
    */
+  // Tidy up "City , State" / "City,State" spacing that exists in the source
+  // data so it displays as "City, State". Does not fix spelling typos in the
+  // underlying rows (those require a data migration).
+  private normalizeLocation(location: string | null | undefined): string {
+    if (!location) return '';
+    return location
+      .replace(/\s+,/g, ',')      // "Bloomington , MN" -> "Bloomington, MN"
+      .replace(/,(?=\S)/g, ', ')  // "City,State" -> "City, State"
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
   private formatFlightSchoolsData(data: any[]): FlightSchool[] {
     return data.map(school => ({
       id: school.id,
       name: school.name,
-      location: school.location,
+      location: this.normalizeLocation(school.location),
       city: school.city,
       state: school.state || undefined,
       country: school.country,

@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
 import { theme } from '../../styles/theme';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../lib/supabase';
 import { stripMarkdown } from '../../utils/markdown';
 
 interface CommunityPost {
@@ -44,10 +44,6 @@ const CommunityPostsManagementScreen: React.FC<CommunityPostsManagementScreenPro
   const categories = ['All', 'Experience', 'Tips', 'Question', 'Discussion'];
 
   // Initialize Supabase client
-  const supabase = createClient(
-    process.env.EXPO_PUBLIC_SUPABASE_URL || '',
-    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
 
   useEffect(() => {
     fetchPosts();

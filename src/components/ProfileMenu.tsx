@@ -191,28 +191,34 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({
                 <Text style={styles.menuItemText}>Profile Settings</Text>
               </TouchableOpacity>
 
-              <View style={styles.divider} />
+              {/* Development-only role toggle. Guarded by __DEV__ so it is
+                  stripped from production/release bundles and never reaches
+                  end users. */}
+              {__DEV__ && (
+                <>
+                  <View style={styles.divider} />
 
-              {/* Development: Role Toggle Button */}
-              <TouchableOpacity
-                style={[styles.menuItem, styles.devMenuItem]}
-                onPress={() => {
-                  console.log('🔵 Role toggle button pressed!');
-                  handleRoleToggle();
-                }}
-              >
-                <Ionicons
-                  name={isAdmin ? "person-outline" : "shield-checkmark-outline"}
-                  size={20}
-                  color={theme.colors.warning}
-                />
-                <Text style={[styles.menuItemText, styles.devMenuText]}>
-                  Switch to {isAdmin ? 'User' : 'Admin'} Role
-                </Text>
-                <View style={styles.devBadge}>
-                  <Text style={styles.devBadgeText}>DEV</Text>
-                </View>
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.menuItem, styles.devMenuItem]}
+                    onPress={() => {
+                      console.log('🔵 Role toggle button pressed!');
+                      handleRoleToggle();
+                    }}
+                  >
+                    <Ionicons
+                      name={isAdmin ? "person-outline" : "shield-checkmark-outline"}
+                      size={20}
+                      color={theme.colors.warning}
+                    />
+                    <Text style={[styles.menuItemText, styles.devMenuText]}>
+                      Switch to {isAdmin ? 'User' : 'Admin'} Role
+                    </Text>
+                    <View style={styles.devBadge}>
+                      <Text style={styles.devBadgeText}>DEV</Text>
+                    </View>
+                  </TouchableOpacity>
+                </>
+              )}
 
               <View style={styles.divider} />
 

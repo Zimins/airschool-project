@@ -3,7 +3,8 @@
  * T024-T027: AuthService implementation with Supabase integration
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import { Platform } from 'react-native';
 import {
   User,
@@ -21,14 +22,10 @@ export class AuthService {
   public supabase: SupabaseClient;
   
   constructor() {
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration missing. Check environment variables.');
-    }
-    
-    this.supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Reuse the single shared Supabase client (see src/lib/supabase.ts).
+    // Creating a client per service spawns duplicate GoTrueClient instances
+    // that fight over the same auth storage key.
+    this.supabase = supabase;
   }
 
   /**
@@ -63,7 +60,7 @@ export class AuthService {
           .from('profiles')
           .select('nickname')
           .eq('id', data.user.id)
-          .single();
+          .maybeSingle();
 
         if (!profileError && profileData) {
           nickname = profileData.nickname;
@@ -128,31 +125,12 @@ export class AuthService {
       // Use exponential backoff retry logic to wait for database triggers
       if (data.user && userData.nickname) {
         try {
-          // Retry up to 3 times with exponential backoff (500ms, 1s, 2s)
-          for (let i = 0; i < 3; i++) {
-            const delay = 500 * Math.pow(2, i);
-            await new Promise(resolve => setTimeout(resolve, delay));
-
-            // Check if profile was created by trigger
-            const { data: existingProfile } = await this.supabase
-              .from('profiles')
-              .select('id')
-              .eq('id', data.user.id)
-              .single();
-
-            if (existingProfile) {
-              if (__DEV__) {
-                console.log('✅ Profile trigger completed, upserting nickname');
-              }
-              break;
-            }
-
-            if (__DEV__ && i < 2) {
-              console.log(`⏳ Waiting for profile trigger (attempt ${i + 1}/3)...`);
-            }
-          }
-
-          // Upsert profile with nickname
+          // The database trigger may create the profile row asynchronously, but
+          // this upsert is idempotent (onConflict: 'id'), so we write the
+          // nickname immediately instead of polling for the trigger. The old
+          // exponential-backoff loop blocked signup for 3.5-8s and issued
+          // several 406 responses (from .single() hitting a not-yet-created
+          // row) before falling back to the very same upsert.
           const { error: profileError } = await this.supabase
             .from('profiles')
             .upsert({

@@ -58,16 +58,32 @@ const HomeScreen = () => {
     return (city || 'Unknown').trim().toLowerCase();
   };
 
-  // Memoized city tags to avoid recalculating on every render
+  // Cap the nationwide city chip row: there are ~490 cities, which is
+  // unusable as a single horizontal strip. When no state is selected we show
+  // only the busiest cities (by school count) and let the search box handle
+  // the long tail; when a state IS selected we show every city in that state.
+  const MAX_CITY_CHIPS = 20;
   const cityTags = useMemo(() => {
-    const cities = allSchools
-      .map(school => school.city)
-      .filter(Boolean)
-      .map(city => city!.trim());
+    const scoped =
+      selectedState === 'All'
+        ? allSchools
+        : allSchools.filter(school => school.state === selectedState);
 
-    const uniqueCities = Array.from(new Set(cities)).sort();
-    return ['All', ...uniqueCities];
-  }, [allSchools]);
+    const counts = new Map<string, number>();
+    scoped.forEach(school => {
+      const city = school.city?.trim();
+      if (city) counts.set(city, (counts.get(city) || 0) + 1);
+    });
+
+    let cities = Array.from(counts.keys());
+    if (selectedState === 'All' && cities.length > MAX_CITY_CHIPS) {
+      cities = cities
+        .sort((a, b) => (counts.get(b)! - counts.get(a)!) || a.localeCompare(b))
+        .slice(0, MAX_CITY_CHIPS);
+    }
+    cities.sort((a, b) => a.localeCompare(b));
+    return ['All', ...cities];
+  }, [allSchools, selectedState]);
 
   // US state tags — only the states that actually have schools, ordered by the
   // canonical US_STATES list. Empty (besides "All") when no school has a state,
@@ -273,16 +289,31 @@ const HomeScreen = () => {
             </View>
             <View style={styles.headerButtons}>
               {isAdmin && (
-                <TouchableOpacity style={styles.adminButton} onPress={() => navigation.navigate('Admin')}>
+                <TouchableOpacity
+                  style={styles.adminButton}
+                  onPress={() => navigation.navigate('Admin')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open admin dashboard"
+                >
                   <Ionicons name="shield-checkmark-outline" size={28} color="white" />
                 </TouchableOpacity>
               )}
               {user ? (
-                <TouchableOpacity style={styles.profileButton} onPress={() => setShowProfileMenu(true)}>
+                <TouchableOpacity
+                  style={styles.profileButton}
+                  onPress={() => setShowProfileMenu(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open profile menu"
+                >
                   <Ionicons name="person-circle-outline" size={32} color="white" />
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate('Login')}>
+                <TouchableOpacity
+                  style={styles.profileButton}
+                  onPress={() => navigation.navigate('Login')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Sign in"
+                >
                   <Ionicons name="person-circle-outline" size={32} color="white" />
                 </TouchableOpacity>
               )}
@@ -314,27 +345,25 @@ const HomeScreen = () => {
       </View>
 
       <View style={styles.boardButtonsContainer}>
-        <TouchableOpacity style={styles.boardButton} onPress={() => navigation.navigate('CommunityBoard')}>
+        <TouchableOpacity
+          style={styles.boardButton}
+          onPress={() => navigation.navigate('CommunityBoard')}
+          accessibilityRole="button"
+          accessibilityLabel="Community Board"
+        >
           <Ionicons name="chatbubbles-outline" size={24} color={theme.colors.primary} />
           <Text style={styles.boardButtonText}>Community Board</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.boardButton} onPress={() => navigation.navigate('StudyBoard')}>
+        <TouchableOpacity
+          style={styles.boardButton}
+          onPress={() => navigation.navigate('StudyBoard')}
+          accessibilityRole="button"
+          accessibilityLabel="Study Board"
+        >
           <Ionicons name="school-outline" size={24} color={theme.colors.secondary} />
           <Text style={styles.boardButtonText}>Study Board</Text>
         </TouchableOpacity>
       </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsContainer}>
-        {cityTags.map(tag => (
-          <TouchableOpacity
-            key={tag}
-            style={[styles.tagButton, selectedTag === tag && styles.tagButtonActive]}
-            onPress={() => setSelectedTag(tag)}
-          >
-            <Text style={[styles.tagText, selectedTag === tag && styles.tagTextActive]}>{tag}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
       {stateTags.length > 1 && (
         <View style={styles.stateFilterSection}>
@@ -344,7 +373,15 @@ const HomeScreen = () => {
               <TouchableOpacity
                 key={state}
                 style={[styles.tagButton, selectedState === state && styles.tagButtonActive]}
-                onPress={() => setSelectedState(state)}
+                onPress={() => {
+                  // City chips are scoped to the selected state, so drop any
+                  // city selection that may no longer be visible.
+                  setSelectedState(state);
+                  setSelectedTag('All');
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: selectedState === state }}
+                accessibilityLabel={`Filter by state ${state}`}
               >
                 <Text style={[styles.tagText, selectedState === state && styles.tagTextActive]}>{state}</Text>
               </TouchableOpacity>
@@ -352,6 +389,26 @@ const HomeScreen = () => {
           </ScrollView>
         </View>
       )}
+
+      <View style={styles.stateFilterSection}>
+        <Text style={styles.stateFilterLabel}>
+          {selectedState === 'All' ? 'Popular Cities' : 'Filter by City'}
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsContainer}>
+          {cityTags.map(tag => (
+            <TouchableOpacity
+              key={tag}
+              style={[styles.tagButton, selectedTag === tag && styles.tagButtonActive]}
+              onPress={() => setSelectedTag(tag)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedTag === tag }}
+              accessibilityLabel={`Filter by city ${tag}`}
+            >
+              <Text style={[styles.tagText, selectedTag === tag && styles.tagTextActive]}>{tag}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
     </View>
   );
 
@@ -394,7 +451,7 @@ const HomeScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.footerCopyright}>© 2025 {settings.app_name}. All rights reserved.</Text>
+      <Text style={styles.footerCopyright}>© {new Date().getFullYear()} {settings.app_name}. All rights reserved.</Text>
     </View>
   );
 

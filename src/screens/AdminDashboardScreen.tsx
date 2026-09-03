@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../styles/theme';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import SchoolsManagementScreen from './admin/SchoolsManagementScreen';
 import StudyMaterialsManagementScreen from './admin/StudyMaterialsManagementScreen';
 import UsersManagementScreen from './admin/UsersManagementScreen';
@@ -36,10 +36,6 @@ const AdminDashboardScreen = () => {
   });
 
   // Initialize Supabase client
-  const supabase = createClient(
-    process.env.EXPO_PUBLIC_SUPABASE_URL || '',
-    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
 
   // Protect admin route
   React.useEffect(() => {

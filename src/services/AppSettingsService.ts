@@ -3,7 +3,8 @@
  * Manages application-wide settings like app name, tagline, etc.
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 
 export interface AppSetting {
   id: string;
@@ -23,14 +24,9 @@ export class AppSettingsService {
   private supabase: SupabaseClient;
 
   constructor() {
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration missing. Check environment variables.');
-    }
-
-    this.supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Reuse the single shared Supabase client (see src/lib/supabase.ts) to
+    // avoid spawning duplicate GoTrueClient instances.
+    this.supabase = supabase;
   }
 
   /**

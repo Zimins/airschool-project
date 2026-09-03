@@ -17,18 +17,35 @@ interface FlightSchoolCardProps {
 
 const FlightSchoolCard: React.FC<FlightSchoolCardProps> = ({ school, onPress }) => {
   const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }).map((_, index) => (
-      <Ionicons
-        key={index}
-        name={index < Math.floor(rating) ? 'star' : 'star-outline'}
-        size={16}
-        color={index < Math.floor(rating) ? theme.colors.warning : theme.colors.textSecondary}
-      />
-    ));
+    return Array.from({ length: 5 }).map((_, index) => {
+      const starValue = index + 1;
+      // Round to the nearest half star so a 4.9 shows (almost) five stars
+      // instead of four — Math.floor previously dropped the fractional part.
+      const filled = rating >= starValue - 0.5;
+      const name = rating >= starValue
+        ? 'star'
+        : rating >= starValue - 0.5
+        ? 'star-half'
+        : 'star-outline';
+      return (
+        <Ionicons
+          key={index}
+          name={name}
+          size={16}
+          color={filled ? theme.colors.warning : theme.colors.textSecondary}
+        />
+      );
+    });
   };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={() => onPress(school.id)} activeOpacity={0.95}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => onPress(school.id)}
+      activeOpacity={0.95}
+      accessibilityRole="button"
+      accessibilityLabel={`${school.name}, ${school.location}, rated ${school.rating.toFixed(1)} out of 5 from ${school.reviewCount} reviews`}
+    >
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.name} numberOfLines={1}>{school.name}</Text>

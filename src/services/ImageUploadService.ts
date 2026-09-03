@@ -1,11 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
-
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL || '',
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+import { supabase } from '../lib/supabase';
 
 export interface ImageUploadResult {
   success: boolean;

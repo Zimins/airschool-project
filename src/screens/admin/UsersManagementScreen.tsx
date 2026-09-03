@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../lib/supabase';
 
 interface User {
   id: string;
@@ -35,10 +35,6 @@ const UsersManagementScreen: React.FC<UsersManagementScreenProps> = ({ onBack })
   const roles = ['All', 'admin', 'user'];
 
   // Initialize Supabase client
-  const supabase = createClient(
-    process.env.EXPO_PUBLIC_SUPABASE_URL || '',
-    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
 
   useEffect(() => {
     fetchUsers();

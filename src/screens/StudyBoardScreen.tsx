@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import { theme } from '../styles/theme';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import ContentDetailModal from '../components/ContentDetailModal';
@@ -43,10 +43,6 @@ const StudyBoardScreen = () => {
   const [selectedMaterial, setSelectedMaterial] = useState<StudyMaterial | null>(null);
 
   // Initialize Supabase client
-  const supabase = createClient(
-    process.env.EXPO_PUBLIC_SUPABASE_URL || '',
-    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
 
   const categories = ['All', 'Written Test', 'Language', 'Navigation', 'Weather', 'Aircraft', 'Other'];
 

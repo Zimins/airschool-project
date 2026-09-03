@@ -201,13 +201,23 @@ const FlightSchoolDetailScreen = () => {
         return (
           <View style={styles.tabContent}>
             <Text style={styles.sectionTitle}>Available Programs</Text>
-            {school.programs.map((program) => (
-              <View key={program.id} style={styles.programCard}>
-                <Text style={styles.programName}>{program.name}</Text>
-                <Text style={styles.programDuration}>Duration: {program.duration}</Text>
-                <Text style={styles.programDescription}>{program.description}</Text>
+            {school.programs.length > 0 ? (
+              school.programs.map((program) => (
+                <View key={program.id} style={styles.programCard}>
+                  <Text style={styles.programName}>{program.name}</Text>
+                  <Text style={styles.programDuration}>Duration: {program.duration}</Text>
+                  <Text style={styles.programDescription}>{program.description}</Text>
+                </View>
+              ))
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="school-outline" size={40} color={theme.colors.textSecondary} />
+                <Text style={styles.emptyStateText}>No programs listed yet</Text>
+                <Text style={styles.emptyStateSubtext}>
+                  This school hasn't published its training programs. Tap "Request more information" below to ask directly.
+                </Text>
               </View>
-            ))}
+            )}
           </View>
         );
       
@@ -215,17 +225,27 @@ const FlightSchoolDetailScreen = () => {
         return (
           <View style={styles.tabContent}>
             <Text style={styles.sectionTitle}>Facility Gallery</Text>
-            <FlatList
-              horizontal
-              data={school.gallery}
-              keyExtractor={(_, index) => index.toString()}
-              renderItem={({ item, index }) => (
-                <TouchableOpacity onPress={() => setSelectedImageIndex(index)}>
-                  <Image source={{ uri: item }} style={styles.galleryImage} />
-                </TouchableOpacity>
-              )}
-              showsHorizontalScrollIndicator={false}
-            />
+            {school.gallery.length > 0 ? (
+              <FlatList
+                horizontal
+                data={school.gallery}
+                keyExtractor={(_, index) => index.toString()}
+                renderItem={({ item, index }) => (
+                  <TouchableOpacity onPress={() => setSelectedImageIndex(index)}>
+                    <Image source={{ uri: item }} style={styles.galleryImage} />
+                  </TouchableOpacity>
+                )}
+                showsHorizontalScrollIndicator={false}
+              />
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="images-outline" size={40} color={theme.colors.textSecondary} />
+                <Text style={styles.emptyStateText}>No photos available</Text>
+                <Text style={styles.emptyStateSubtext}>
+                  This school hasn't added facility photos yet.
+                </Text>
+              </View>
+            )}
           </View>
         );
       
@@ -235,20 +255,29 @@ const FlightSchoolDetailScreen = () => {
             <Text style={styles.sectionTitle}>Location Information</Text>
             <View style={styles.contactInfo}>
               <Text style={styles.contactLabel}>Address:</Text>
-              <Text style={styles.contactValue}>{school.contact.address}</Text>
-              
+              <Text style={[styles.contactValue, !school.contact.address?.trim() && styles.contactValueMuted]}>
+                {school.contact.address?.trim() || 'Not provided'}
+              </Text>
+
               <Text style={styles.contactLabel}>Phone:</Text>
-              <Text style={styles.contactValue}>{school.contact.phone}</Text>
-              
+              <Text style={[styles.contactValue, !school.contact.phone?.trim() && styles.contactValueMuted]}>
+                {school.contact.phone?.trim() || 'Not provided'}
+              </Text>
+
               <Text style={styles.contactLabel}>Email:</Text>
-              <Text style={styles.contactValue}>{school.contact.email}</Text>
-              
+              <Text style={[styles.contactValue, !school.contact.email?.trim() && styles.contactValueMuted]}>
+                {school.contact.email?.trim() || 'Not provided'}
+              </Text>
+
               <Text style={styles.contactLabel}>Website:</Text>
-              <Text style={styles.contactValue}>{school.contact.website}</Text>
+              <Text style={[styles.contactValue, !school.contact.website?.trim() && styles.contactValueMuted]}>
+                {school.contact.website?.trim() || 'Not provided'}
+              </Text>
             </View>
-            
+
             <View style={styles.mapPlaceholder}>
-              <Text style={styles.mapPlaceholderText}>Map (Prototype)</Text>
+              <Ionicons name="map-outline" size={28} color={theme.colors.textSecondary} />
+              <Text style={styles.mapPlaceholderText}>Map view coming soon</Text>
             </View>
           </View>
         );
@@ -317,7 +346,13 @@ const FlightSchoolDetailScreen = () => {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Hero Section */}
       <View style={styles.heroSection}>
-        <Image source={{ uri: school.image }} style={styles.heroImage} />
+        {school.image ? (
+          <Image source={{ uri: school.image }} style={styles.heroImage} />
+        ) : (
+          <View style={[styles.heroImage, styles.heroImagePlaceholder]}>
+            <Ionicons name="airplane-outline" size={56} color="rgba(255,255,255,0.85)" />
+          </View>
+        )}
         <View style={styles.heroOverlay}>
           <Text style={styles.schoolName}>{school.name}</Text>
           <View style={styles.heroInfo}>
@@ -338,6 +373,8 @@ const FlightSchoolDetailScreen = () => {
               navigation.navigate('Home' as never);
             }
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
@@ -356,6 +393,9 @@ const FlightSchoolDetailScreen = () => {
               key={tab.id}
               style={[styles.tab, activeTab === tab.id && styles.activeTab]}
               onPress={() => setActiveTab(tab.id)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeTab === tab.id }}
+              accessibilityLabel={`${tab.label} tab`}
             >
               <Text
                 style={[
@@ -379,6 +419,8 @@ const FlightSchoolDetailScreen = () => {
         style={styles.requestInfoButton}
         onPress={() => navigation.navigate('Signup' as never)}
         activeOpacity={0.9}
+        accessibilityRole="button"
+        accessibilityLabel="Request more information"
       >
         <Ionicons name="information-circle-outline" size={20} color="white" />
         <Text style={styles.requestInfoButtonText}>Request more information</Text>
@@ -525,6 +567,34 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  heroImagePlaceholder: {
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  emptyStateText: {
+    fontSize: theme.fontSize.base,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginTop: theme.spacing.sm,
+  },
+  emptyStateSubtext: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
+    lineHeight: 20,
+  },
+  contactValueMuted: {
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
+  },
   heroOverlay: {
     position: 'absolute',
     bottom: 0,
@@ -657,6 +727,7 @@ const styles = StyleSheet.create({
   mapPlaceholderText: {
     color: theme.colors.textSecondary,
     fontSize: theme.fontSize.base,
+    marginTop: theme.spacing.sm,
   },
   reviewHeader: {
     flexDirection: 'row',

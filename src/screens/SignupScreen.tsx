@@ -11,7 +11,13 @@ import {
   Alert,
   StatusBar,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
+
+// TODO: point these at the real Terms of Service / Privacy Policy pages once
+// they exist. Kept as named constants so there is a single place to update.
+const TERMS_URL = 'https://preflightnet.com/terms';
+const PRIVACY_URL = 'https://preflightnet.com/privacy';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -134,6 +140,23 @@ const SignupScreen = () => {
     }
   };
 
+  const openLink = async (url: string) => {
+    try {
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Cannot open link', url);
+      }
+    } catch (error) {
+      console.error('Failed to open link:', error);
+    }
+  };
+
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
@@ -217,13 +240,35 @@ const SignupScreen = () => {
             {errors.confirmPassword ? <Text style={styles.fieldErrorText}>{errors.confirmPassword}</Text> : null}
           </View>
 
-          <TouchableOpacity style={styles.termsContainer} onPress={() => setAgreeToTerms(!agreeToTerms)}>
-            <View style={styles.checkbox}>{agreeToTerms && <Text style={styles.checkmark}>✓</Text>}</View>
+          <View style={styles.termsContainer}>
+            <TouchableOpacity
+              onPress={() => setAgreeToTerms(!agreeToTerms)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: agreeToTerms }}
+              accessibilityLabel="I agree to the Terms of Service and Privacy Policy"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <View style={styles.checkbox}>{agreeToTerms && <Text style={styles.checkmark}>✓</Text>}</View>
+            </TouchableOpacity>
             <Text style={styles.termsText}>
-              I agree to the <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-              <Text style={styles.termsLink}>Privacy Policy</Text>
+              I agree to the{' '}
+              <Text
+                style={styles.termsLink}
+                accessibilityRole="link"
+                onPress={() => openLink(TERMS_URL)}
+              >
+                Terms of Service
+              </Text>
+              {' '}and{' '}
+              <Text
+                style={styles.termsLink}
+                accessibilityRole="link"
+                onPress={() => openLink(PRIVACY_URL)}
+              >
+                Privacy Policy
+              </Text>
             </Text>
-          </TouchableOpacity>
+          </View>
 
           {errors.general ? (
             <View style={styles.errorContainer}>

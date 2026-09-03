@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../lib/supabase';
 import { US_STATES } from '../../data/usStates';
 
 interface School {
@@ -51,10 +51,6 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
     contact_website: '',
   });
 
-  const supabase = createClient(
-    process.env.EXPO_PUBLIC_SUPABASE_URL || '',
-    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
 
   useEffect(() => {
     fetchSchools();
