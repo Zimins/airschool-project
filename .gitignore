@@ -39,3 +39,7 @@ yarn-error.*
 
 # Supabase CLI temp files
 supabase/.temp/
+
+# QA / dogfooding artifacts
+dogfood-output/
+.playwright-mcp/
