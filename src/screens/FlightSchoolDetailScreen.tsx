@@ -22,6 +22,7 @@ import { mockReviews, getRatingDistribution } from '../data/mockData';
 import { theme } from '../styles/theme';
 import ReviewCard from '../components/ReviewCard';
 import ReviewModal from '../components/ReviewModal';
+import RequestInfoModal from '../components/RequestInfoModal';
 import { FlightSchoolService } from '../services/FlightSchoolService';
 import { FlightSchool, Review } from '../types/flightSchool';
 import { useAuth } from '../context/AuthContext';
@@ -44,6 +45,8 @@ const FlightSchoolDetailScreen = () => {
   const [activeTab, setActiveTab] = useState('programs');
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [loginRequiredModalVisible, setLoginRequiredModalVisible] = useState(false);
+  const [loginRequiredAction, setLoginRequiredAction] = useState<'review' | 'inquiry'>('review');
+  const [requestInfoVisible, setRequestInfoVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [flightSchoolService] = useState(() => new FlightSchoolService());
@@ -92,9 +95,21 @@ const FlightSchoolDetailScreen = () => {
 
   const handleWriteReviewClick = () => {
     if (!authState.isAuthenticated) {
+      setLoginRequiredAction('review');
       setLoginRequiredModalVisible(true);
     } else {
       setReviewModalVisible(true);
+    }
+  };
+
+  // Guests are asked to sign in (the button doubles as a signup driver);
+  // signed-in users get the school's real contact channels.
+  const handleRequestInfo = () => {
+    if (!authState.isAuthenticated) {
+      setLoginRequiredAction('inquiry');
+      setLoginRequiredModalVisible(true);
+    } else {
+      setRequestInfoVisible(true);
     }
   };
 
@@ -414,10 +429,10 @@ const FlightSchoolDetailScreen = () => {
       {renderTabContent()}
     </ScrollView>
 
-      {/* Request more information — drives signup (user acquisition) */}
+      {/* Request more information — contact sheet for members, login prompt for guests */}
       <TouchableOpacity
         style={styles.requestInfoButton}
-        onPress={() => navigation.navigate('Signup' as never)}
+        onPress={handleRequestInfo}
         activeOpacity={0.9}
         accessibilityRole="button"
         accessibilityLabel="Request more information"
@@ -435,6 +450,18 @@ const FlightSchoolDetailScreen = () => {
         onSubmit={handleSubmitReview}
       />
 
+      <RequestInfoModal
+        visible={requestInfoVisible}
+        onClose={() => setRequestInfoVisible(false)}
+        schoolName={school.name}
+        contact={{
+          phone: school.contact.phone,
+          email: school.contact.email,
+          website: school.contact.website,
+        }}
+        requester={{ name: authState.user?.nickname, email: authState.user?.email }}
+      />
+
       {/* Login Required Modal */}
       <Modal
         visible={loginRequiredModalVisible}
@@ -447,7 +474,9 @@ const FlightSchoolDetailScreen = () => {
             <Ionicons name="lock-closed-outline" size={48} color={theme.colors.primary} />
             <Text style={styles.loginModalTitle}>Login Required</Text>
             <Text style={styles.loginModalMessage}>
-              You need to be logged in to write a review.
+              {loginRequiredAction === 'review'
+                ? 'You need to be logged in to write a review.'
+                : 'You need to be logged in to request information from this school.'}
             </Text>
             <View style={styles.loginModalButtons}>
               <TouchableOpacity

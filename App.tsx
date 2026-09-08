@@ -8,6 +8,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { AppSettingsProvider } from './src/context/AppSettingsContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { RootStackParamList } from './src/navigation/AppNavigator';
+import { linkingScreens } from './src/navigation/linking';
 
 // Context to track if user came from password reset email
 type PasswordResetContextType = {
@@ -42,18 +43,7 @@ if (Platform.OS === 'web') {
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [Linking.createURL('/'), 'http://localhost:8083', 'http://localhost:8081'],
   config: {
-    screens: {
-      Home: '',
-      Login: 'login',
-      Signup: 'signup',
-      Admin: 'admin',
-      FlightSchoolDetail: {
-        path: 'school/:schoolId',
-        parse: {
-          schoolId: (schoolId: string) => schoolId,
-        },
-      },
-    },
+    screens: linkingScreens,
   },
 };
 

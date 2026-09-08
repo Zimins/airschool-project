@@ -9,13 +9,16 @@ import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import CommunityBoardScreen from '../screens/CommunityBoardScreen';
 import StudyBoardScreen from '../screens/StudyBoardScreen';
 
+/** Sidebar sections of the admin dashboard. */
+export type AdminMenu = 'dashboard' | 'schools' | 'materials' | 'posts' | 'users';
+
 export type RootStackParamList = {
   Home: undefined;
   FlightSchoolDetail: { schoolId: string };
   Login: undefined;
   Signup: undefined;
   ForgotPassword: undefined;
-  Admin: undefined;
+  Admin: { initialMenu?: AdminMenu } | undefined;
   CommunityBoard: undefined;
   StudyBoard: undefined;
 };

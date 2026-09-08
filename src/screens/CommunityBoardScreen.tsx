@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,9 @@ import { theme } from '../styles/theme';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import ContentDetailModal from '../components/ContentDetailModal';
 import { stripMarkdown } from '../utils/markdown';
+import { useAuth } from '../context/AuthContext';
+import CreatePostModal, { NewPostData } from '../components/CreatePostModal';
+import LoginRequiredModal from '../components/LoginRequiredModal';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'CommunityBoard'>;
 
@@ -43,51 +46,83 @@ const CommunityBoardScreen = () => {
   const [posts, setPosts] = useState<PostWithComments[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<PostWithComments | null>(null);
+  const [createVisible, setCreateVisible] = useState(false);
+  const [loginPromptVisible, setLoginPromptVisible] = useState(false);
+  const { state: authState } = useAuth();
 
   // Initialize Supabase client
 
   const categories = ['All', 'Experience', 'Tips', 'Question', 'Discussion'];
 
   // Fetch community posts from Supabase
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        setLoading(true);
+  const fetchPosts = useCallback(async () => {
+    try {
+      setLoading(true);
 
-        // Fetch posts
-        const { data: postsData, error: postsError } = await supabase
-          .from('community_posts')
-          .select('*')
-          .order('created_at', { ascending: false });
+      // Fetch posts
+      const { data: postsData, error: postsError } = await supabase
+        .from('community_posts')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        if (postsError) throw postsError;
+      if (postsError) throw postsError;
 
-        // Fetch comment counts for each post
-        const postsWithComments: PostWithComments[] = await Promise.all(
-          (postsData || []).map(async (post) => {
-            const { count } = await supabase
-              .from('community_comments')
-              .select('*', { count: 'exact', head: true })
-              .eq('post_id', post.id);
+      // Fetch comment counts for each post
+      const postsWithComments: PostWithComments[] = await Promise.all(
+        (postsData || []).map(async (post) => {
+          const { count } = await supabase
+            .from('community_comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.id);
 
-            return {
-              ...post,
-              comments: count || 0,
-            };
-          })
-        );
+          return {
+            ...post,
+            comments: count || 0,
+          };
+        })
+      );
 
-        setPosts(postsWithComments);
-      } catch (error) {
-        console.error('Error fetching community posts:', error);
-        setPosts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPosts();
+      setPosts(postsWithComments);
+    } catch (error) {
+      console.error('Error fetching community posts:', error);
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
+  const handleFabPress = () => {
+    if (!authState.isAuthenticated) {
+      setLoginPromptVisible(true);
+      return;
+    }
+    setCreateVisible(true);
+  };
+
+  const handleCreatePost = async (data: NewPostData) => {
+    const user = authState.user;
+    if (!user) {
+      throw new Error('Not authenticated');
+    }
+    const authorName = user.nickname?.trim() || user.email.split('@')[0];
+    const { error } = await supabase.from('community_posts').insert({
+      title: data.title,
+      category: data.category,
+      content: data.content,
+      author_id: user.id,
+      author_name: authorName,
+    });
+    if (error) throw error;
+
+    // Make sure the new post is actually visible in the list.
+    setSelectedCategory('All');
+    setSearchQuery('');
+    await fetchPosts();
+  };
 
   const filteredPosts = posts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -202,9 +237,30 @@ const CommunityBoardScreen = () => {
         />
       )}
 
-      <TouchableOpacity style={styles.fab}>
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={handleFabPress}
+        accessibilityRole="button"
+        accessibilityLabel="Write a new post"
+      >
         <Ionicons name="add" size={24} color="white" />
       </TouchableOpacity>
+
+      <CreatePostModal
+        visible={createVisible}
+        onClose={() => setCreateVisible(false)}
+        onSubmit={handleCreatePost}
+      />
+
+      <LoginRequiredModal
+        visible={loginPromptVisible}
+        action="write a post"
+        onClose={() => setLoginPromptVisible(false)}
+        onLogin={() => {
+          setLoginPromptVisible(false);
+          navigation.navigate('Login');
+        }}
+      />
 
       {selectedPost && (
         <ContentDetailModal

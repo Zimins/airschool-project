@@ -9,7 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -22,11 +22,15 @@ import UsersManagementScreen from './admin/UsersManagementScreen';
 import CommunityPostsManagementScreen from './admin/CommunityPostsManagementScreen';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Admin'>;
+type AdminRouteProp = RouteProp<RootStackParamList, 'Admin'>;
 
 const AdminDashboardScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<AdminRouteProp>();
   const { state, actions } = useAuth();
-  const [selectedMenu, setSelectedMenu] = useState('dashboard');
+  // Other screens (e.g. the Study Board "+" button) can deep-link straight
+  // into a management section.
+  const [selectedMenu, setSelectedMenu] = useState<string>(route.params?.initialMenu ?? 'dashboard');
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalSchools: 0,

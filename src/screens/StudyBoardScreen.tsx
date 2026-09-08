@@ -18,6 +18,7 @@ import { theme } from '../styles/theme';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import ContentDetailModal from '../components/ContentDetailModal';
 import { stripMarkdown } from '../utils/markdown';
+import { useAuth } from '../context/AuthContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'StudyBoard'>;
 
@@ -36,6 +37,10 @@ interface StudyMaterial {
 
 const StudyBoardScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { state: authState } = useAuth();
+  // Study materials are curated by admins (see StudyMaterialsManagementScreen),
+  // so the add button is only meaningful for them.
+  const isAdmin = authState.session?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [materials, setMaterials] = useState<StudyMaterial[]>([]);
@@ -188,9 +193,16 @@ const StudyBoardScreen = () => {
         />
       )}
 
-      <TouchableOpacity style={styles.fab}>
-        <Ionicons name="add" size={24} color="white" />
-      </TouchableOpacity>
+      {isAdmin && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => navigation.navigate('Admin', { initialMenu: 'materials' })}
+          accessibilityRole="button"
+          accessibilityLabel="Add study material"
+        >
+          <Ionicons name="add" size={24} color="white" />
+        </TouchableOpacity>
+      )}
 
       {selectedMaterial && (
         <ContentDetailModal
