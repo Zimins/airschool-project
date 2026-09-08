@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
 import { supabase } from '../../lib/supabase';
+import { confirmDelete, deleteAccessibilityLabel } from '../../utils/confirmDelete';
 
 interface StudyMaterial {
   id: string;
@@ -169,22 +170,8 @@ const StudyMaterialsManagementScreen: React.FC<StudyMaterialsManagementScreenPro
     }
   };
 
-  const handleDelete = (id: string) => {
-    const message = 'Are you sure you want to delete this study material?';
-
-    // Alert.alert button callbacks do not fire on react-native-web, so use
-    // window.confirm there (same pattern as SchoolsManagementScreen).
-    if (Platform.OS === 'web') {
-      if (window.confirm(message)) {
-        deleteMaterial(id);
-      }
-      return;
-    }
-
-    Alert.alert('Confirm Delete', message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteMaterial(id) },
-    ]);
+  const handleDelete = (id: string, title: string) => {
+    confirmDelete(title, () => deleteMaterial(id), 'Delete Study Material');
   };
 
   const handleCancel = () => {
@@ -401,8 +388,10 @@ const StudyMaterialsManagementScreen: React.FC<StudyMaterialsManagementScreenPro
                     <Ionicons name="pencil" size={20} color={theme.colors.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => handleDelete(material.id)}
+                    onPress={() => handleDelete(material.id, material.title)}
                     style={styles.iconButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={deleteAccessibilityLabel(material.title)}
                   >
                     <Ionicons name="trash" size={20} color="#ef4444" />
                   </TouchableOpacity>

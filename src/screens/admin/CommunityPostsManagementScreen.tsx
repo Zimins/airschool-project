@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
 import { theme } from '../../styles/theme';
 import { supabase } from '../../lib/supabase';
+import { confirmDelete, deleteAccessibilityLabel } from '../../utils/confirmDelete';
 import { stripMarkdown } from '../../utils/markdown';
 
 interface CommunityPost {
@@ -97,22 +98,8 @@ const CommunityPostsManagementScreen: React.FC<CommunityPostsManagementScreenPro
     }
   };
 
-  const handleDelete = (id: string) => {
-    const message = 'Are you sure you want to delete this post? This action cannot be undone.';
-
-    // Alert.alert button callbacks do not fire on react-native-web, so use
-    // window.confirm there (same pattern as SchoolsManagementScreen).
-    if (Platform.OS === 'web') {
-      if (window.confirm(message)) {
-        deletePost(id);
-      }
-      return;
-    }
-
-    Alert.alert('Confirm Delete', message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deletePost(id) },
-    ]);
+  const handleDelete = (id: string, title: string) => {
+    confirmDelete(title, () => deletePost(id), 'Delete Post');
   };
 
   const handleViewDetails = (post: CommunityPost) => {
@@ -228,7 +215,9 @@ const CommunityPostsManagementScreen: React.FC<CommunityPostsManagementScreenPro
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.deleteButton}
-                    onPress={() => handleDelete(post.id)}
+                    onPress={() => handleDelete(post.id, post.title)}
+                    accessibilityRole="button"
+                    accessibilityLabel={deleteAccessibilityLabel(post.title)}
                   >
                     <Ionicons name="trash" size={18} color="#ef4444" />
                     <Text style={styles.deleteButtonText}>Delete</Text>

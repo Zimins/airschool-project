@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
 import { supabase } from '../../lib/supabase';
+import { confirmDelete, deleteAccessibilityLabel } from '../../utils/confirmDelete';
 import { US_STATES } from '../../data/usStates';
 
 interface School {
@@ -132,21 +133,7 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
   };
 
   const handleDeleteSchool = (schoolId: string, schoolName: string) => {
-    const message = `Are you sure you want to delete "${schoolName}"? This action cannot be undone.`;
-
-    // Alert.alert button callbacks do not fire on react-native-web, so use
-    // window.confirm there (same pattern as ProfileMenu).
-    if (Platform.OS === 'web') {
-      if (window.confirm(message)) {
-        deleteSchool(schoolId);
-      }
-      return;
-    }
-
-    Alert.alert('Delete School', message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteSchool(schoolId) },
-    ]);
+    confirmDelete(schoolName, () => deleteSchool(schoolId), 'Delete School');
   };
 
   const handleSaveSchool = async () => {
@@ -245,6 +232,8 @@ const SchoolsManagementScreen = ({ onBack }: { onBack: () => void }) => {
                   <TouchableOpacity
                     style={styles.deleteButton}
                     onPress={() => handleDeleteSchool(school.id, school.name)}
+                    accessibilityRole="button"
+                    accessibilityLabel={deleteAccessibilityLabel(school.name)}
                   >
                     <Ionicons name="trash-outline" size={20} color="#ff4444" />
                   </TouchableOpacity>
