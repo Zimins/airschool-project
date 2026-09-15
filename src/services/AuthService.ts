@@ -50,8 +50,8 @@ export class AuthService {
         return null; // Invalid credentials
       }
 
-      // Get user role from user metadata or default to 'user'
-      const userRole = data.user.user_metadata?.role || 'user';
+      // Role is a server-side fact (admin_users membership), never user_metadata.
+      const userRole = await this.fetchRole();
 
       // Fetch additional user data from profiles table (including nickname)
       let nickname: string | undefined;
@@ -109,11 +109,6 @@ export class AuthService {
       const { data, error } = await this.supabase.auth.signUp({
         email: normalizedEmail,
         password: userData.password,
-        options: {
-          data: {
-            role: userData.role || 'user'
-          }
-        }
       });
 
       if (error) {
@@ -456,66 +451,21 @@ export class AuthService {
   }
 
   /**
-   * Update user role
-   * Changes the user's role in user_metadata
+   * Resolve the current user's role from the server. Admin status lives in
+   * public.admin_users and is exposed through the is_admin() RPC, so a user
+   * cannot grant it to themselves (user_metadata is client-writable).
    */
-  async updateUserRole(newRole: 'user' | 'admin'): Promise<void> {
+  async fetchRole(): Promise<'user' | 'admin'> {
     try {
-      console.log('🔄 Starting role update to:', newRole);
-
-      // Get current Supabase session directly
-      const { data: { session: supabaseSession }, error: sessionError } = await this.supabase.auth.getSession();
-
-      if (sessionError || !supabaseSession) {
-        console.error('❌ No active Supabase session:', sessionError);
-        throw new Error('Not authenticated');
-      }
-
-      console.log('✅ Found Supabase session for user:', supabaseSession.user.email);
-
-      const { data, error } = await this.supabase.auth.updateUser({
-        data: {
-          role: newRole,
-          role_changed_at: new Date().toISOString(),
-          role_change_count: (supabaseSession.user.user_metadata?.role_change_count || 0) + 1,
-        },
-      });
-
+      const { data, error } = await this.supabase.rpc('is_admin');
       if (error) {
-        console.error('❌ Supabase updateUser error:', error);
-        throw new Error(error.message || 'Failed to update role');
+        console.warn('is_admin RPC failed, defaulting to user role:', error.message);
+        return 'user';
       }
-
-      console.log('✅ Supabase updateUser success, new role:', data?.user?.user_metadata?.role);
-
-      // Refresh session to get latest metadata
-      const { data: refreshData, error: refreshError } = await this.supabase.auth.refreshSession();
-
-      if (refreshError) {
-        console.warn('⚠️ Session refresh warning:', refreshError);
-      } else {
-        console.log('🔄 Session refreshed, metadata:', refreshData.user?.user_metadata);
-      }
-
-      // Update local session with new role
-      const localSession = await this.getCurrentSession();
-      if (localSession) {
-        const updatedSession: UserSession = {
-          ...localSession,
-          role: newRole,
-          supabaseSession: refreshData?.session || localSession.supabaseSession,
-        };
-        await SessionManager.saveSession(updatedSession);
-        console.log('✅ Local session updated with new role:', newRole);
-      }
-
-      return;
+      return data === true ? 'admin' : 'user';
     } catch (error) {
-      console.error('❌ updateUserRole error:', error);
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('Failed to update role');
+      console.warn('is_admin RPC threw, defaulting to user role:', error);
+      return 'user';
     }
   }
 

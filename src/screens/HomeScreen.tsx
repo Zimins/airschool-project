@@ -27,7 +27,6 @@ import ProfileMenu from '../components/ProfileMenu';
 import ProfileSettingsModal from '../components/ProfileSettingsModal';
 import { useAuth } from '../context/AuthContext';
 import { usePasswordReset } from '../../App';
-import { AuthService } from '../services/AuthService';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { US_STATES } from '../data/usStates';
 
@@ -199,73 +198,6 @@ const HomeScreen = () => {
         window.alert(`Failed to open ${platform}`);
       } else {
         Alert.alert('Error', `Failed to open ${platform}`);
-      }
-    }
-  };
-
-  const handleRoleChange = async () => {
-    if (__DEV__) {
-      console.log('🟢 HomeScreen: handleRoleChange called!');
-      console.log('🟢 Current isAdmin:', isAdmin);
-    }
-
-    const newRole = isAdmin ? 'user' : 'admin';
-    const roleDisplayName = newRole === 'admin' ? 'Administrator' : 'Regular User';
-
-    try {
-      if (__DEV__) {
-        console.log(`🔄 Switching role from ${session?.role} to ${newRole}...`);
-      }
-
-      // Use AuthService to update role
-      const authService = new AuthService();
-      await authService.updateUserRole(newRole);
-
-      // Refresh the session to get updated role
-      await actions.checkSession();
-
-      // Show success alert with additional context
-      const successMessage =
-        `🎉 Role Changed Successfully!\n\nYou are now logged in as ${roleDisplayName}.\n\n` +
-        `${
-          newRole === 'admin'
-            ? '• You now have access to the Admin Dashboard\n• Admin features are now available'
-            : '• Admin features are now hidden\n• You have standard user permissions'
-        }`;
-
-      if (Platform.OS === 'web') {
-        window.alert(successMessage);
-      } else {
-        Alert.alert(
-          '🎉 Role Changed Successfully!',
-          `You are now logged in as ${roleDisplayName}.\n\n` +
-            `${
-              newRole === 'admin'
-                ? '• You now have access to the Admin Dashboard\n• Admin features are now available'
-                : '• Admin features are now hidden\n• You have standard user permissions'
-            }`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                console.log(`🎯 User role successfully changed to: ${newRole.toUpperCase()}`);
-              },
-            },
-          ],
-        );
-      }
-
-      console.log(`🎯 User role successfully changed to: ${newRole.toUpperCase()}`);
-    } catch (error) {
-      console.error('❌ Role change failed:', error);
-
-      const errorMessage =
-        'Failed to change role. Please try again.\n\nIf the problem persists, please check your internet connection.';
-
-      if (Platform.OS === 'web') {
-        window.alert(`Error\n\n${errorMessage}`);
-      } else {
-        Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
       }
     }
   };
@@ -507,7 +439,6 @@ const HomeScreen = () => {
           // 상태가 업데이트되어 UI가 자동으로 변경됩니다
         }}
         onNavigateToAdmin={() => navigation.navigate('Admin')}
-        onRoleChange={handleRoleChange}
         onShowProfileSettings={() => setShowProfileSettings(true)}
       />
 

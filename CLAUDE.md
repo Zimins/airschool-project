@@ -121,18 +121,20 @@ All data is static and resets on app refresh.
 6. Authentication is handled by Supabase Auth (no custom database tables needed)
 7. Security: Use Supabase's built-in security features, validate inputs, use RLS policies
 
-## Test Accounts
+## Admin Access
 
-For development and testing, use these pre-configured accounts:
+Admin is a server-side fact: a user is an admin only if their auth user id has a row in `public.admin_users`. RLS policies (migration 026) and the app's UI gate both go through `public.is_admin()`, which the app calls via `supabase.rpc('is_admin')` on login and session restore. `user_metadata.role` is ignored (it is client-writable) and the former "Switch to Admin Role (DEV)" toggle was removed.
 
-**Regular User:**
-- Email: `test@airschool.com`
-- Password: `testpassword123`
-- Role: `user`
+**Grant admin** (Supabase SQL editor or Management API):
 
-**Administrator:**
-- Email: `admin@airschool.com`
-- Password: `admin123`
-- Role: `admin`
+```sql
+INSERT INTO public.admin_users (id, email, role, created_at)
+SELECT id, email, 'admin', now() FROM auth.users WHERE email = 'person@example.com'
+ON CONFLICT (id) DO NOTHING;
+```
 
-**Setup Note:** Disable email confirmations in Supabase Auth settings for development, or manually confirm users in the Supabase dashboard under Authentication > Users.
+**Revoke admin**: `DELETE FROM public.admin_users WHERE email = 'person@example.com';`
+
+**Write access summary**: `study_materials` and `flight_schools` are admin-only; `community_posts` / `community_comments` can be created by any signed-in user (own `author_id`) and edited or deleted by the owner or an admin; `profiles` rows are editable only by their owner. Everything is publicly readable.
+
+**Test accounts**: there are no seeded credentials. For QA, sign up a throwaway account in the app; to test admin flows, add that account to `admin_users` with the SQL above and remove it afterwards.

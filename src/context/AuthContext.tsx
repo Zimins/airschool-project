@@ -143,7 +143,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Check if user was created and session exists (email confirmation disabled)
       if (result && result.session) {
         // If we got a session back, the user is immediately signed in
-        const userRole = result.user?.user_metadata?.role || 'user';
+        const userRole = await authService.fetchRole();
 
         // Try to fetch nickname from profiles (if it exists)
         let nickname: string | undefined;
@@ -211,8 +211,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const supabaseSession = await authService.getCurrentSupabaseSession();
 
       if (supabaseSession && supabaseSession.user) {
-        // Valid Supabase session exists
-        const userRole = supabaseSession.user.user_metadata?.role || 'user';
+        // Valid Supabase session exists; ask the server whether it is an admin
+        const userRole = await authService.fetchRole();
 
         // Fetch nickname from profiles table
         let nickname: string | undefined;
