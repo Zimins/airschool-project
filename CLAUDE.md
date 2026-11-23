@@ -138,3 +138,13 @@ ON CONFLICT (id) DO NOTHING;
 **Write access summary**: `study_materials` and `flight_schools` are admin-only; `community_posts` / `community_comments` can be created by any signed-in user (own `author_id`) and edited or deleted by the owner or an admin; `profiles` rows are editable only by their owner. Everything is publicly readable.
 
 **Test accounts**: there are no seeded credentials. For QA, sign up a throwaway account in the app; to test admin flows, add that account to `admin_users` with the SQL above and remove it afterwards.
+
+## Legal Documents (Terms of Service / Privacy Policy / Community Guidelines)
+
+The three documents live in `public.legal_documents` (migration 029, fixed slugs `terms`, `privacy`, `community-guidelines`) and are edited by admins in **Admin → Legal Documents** (`src/screens/admin/LegalDocumentsManagementScreen.tsx`). Public pages: `/terms`, `/privacy`, `/community-guidelines` (`src/screens/LegalDocumentScreen.tsx`, fetched on every visit); data access and validation: `src/services/LegalDocumentService.ts`. Sign Up's consent links open these pages.
+
+- Everyone can read; only `is_admin()` can UPDATE; there is no INSERT/DELETE policy, so adding a document means a new migration (extend the slug check, seed the row) plus `LEGAL_DOCUMENT_SLUGS` / `LEGAL_DOCUMENT_ROUTES` / `LEGAL_DOCUMENT_PATHS`.
+- Every edit archives the previous text in `public.legal_document_versions` (admin-readable), so the version in force on any date can be recovered.
+- The text in migration 029 is only the initial seed (`ON CONFLICT DO NOTHING`); after an admin edit the database is the source of truth. 029 is idempotent and also safe on a project where the earlier terms/privacy-only draft of it was applied.
+- Content is Markdown rendered by react-native-markdown-display (HTML is shown as text, unsafe link schemes are rejected). If a `public.sanitize_content` function exists in the project, the trigger also applies it and the editor tells the admin when the saved text was adjusted.
+- Keep the public URLs stable — they may be published elsewhere (store listings, emails). `tests/contracts/linking.test.ts` and `tests/contracts/legal-documents.test.ts` guard the paths, slugs, RLS shape and limits.

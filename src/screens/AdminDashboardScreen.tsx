@@ -20,6 +20,7 @@ import SchoolsManagementScreen from './admin/SchoolsManagementScreen';
 import StudyMaterialsManagementScreen from './admin/StudyMaterialsManagementScreen';
 import UsersManagementScreen from './admin/UsersManagementScreen';
 import CommunityPostsManagementScreen from './admin/CommunityPostsManagementScreen';
+import LegalDocumentsManagementScreen from './admin/LegalDocumentsManagementScreen';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Admin'>;
 type AdminRouteProp = RouteProp<RootStackParamList, 'Admin'>;
@@ -112,6 +113,7 @@ const AdminDashboardScreen = () => {
     { id: 'materials', label: 'Study Materials', icon: 'book-outline' },
     { id: 'posts', label: 'Community Posts', icon: 'chatbubbles-outline' },
     { id: 'users', label: 'Users', icon: 'people-outline' },
+    { id: 'legal', label: 'Legal Documents', icon: 'document-lock-outline' },
   ];
 
   const statsCards = [
@@ -135,6 +137,8 @@ const AdminDashboardScreen = () => {
         return <CommunityPostsManagementScreen onBack={() => setSelectedMenu('dashboard')} />;
       case 'users':
         return <UsersManagementScreen onBack={() => setSelectedMenu('dashboard')} />;
+      case 'legal':
+        return <LegalDocumentsManagementScreen onBack={() => setSelectedMenu('dashboard')} />;
       case 'dashboard':
       default:
         return (
