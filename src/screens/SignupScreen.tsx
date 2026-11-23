@@ -8,20 +8,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   StatusBar,
   ActivityIndicator,
-  Linking,
 } from 'react-native';
-
-// TODO: point these at the real Terms of Service / Privacy Policy pages once
-// they exist. Kept as named constants so there is a single place to update.
-const TERMS_URL = 'https://preflightnet.com/terms';
-const PRIVACY_URL = 'https://preflightnet.com/privacy';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { openLegalDocument } from '../navigation/openLegalDocument';
 import { theme } from '../styles/theme';
 import { useAuth } from '../context/AuthContext';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -140,23 +134,6 @@ const SignupScreen = () => {
     }
   };
 
-  const openLink = async (url: string) => {
-    try {
-      if (Platform.OS === 'web') {
-        window.open(url, '_blank', 'noopener,noreferrer');
-        return;
-      }
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert('Cannot open link', url);
-      }
-    } catch (error) {
-      console.error('Failed to open link:', error);
-    }
-  };
-
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
@@ -245,7 +222,7 @@ const SignupScreen = () => {
               onPress={() => setAgreeToTerms(!agreeToTerms)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: agreeToTerms }}
-              accessibilityLabel="I agree to the Terms of Service and Privacy Policy"
+              accessibilityLabel="I agree to the Terms of Service, Privacy Policy and Community Guidelines"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <View style={styles.checkbox}>{agreeToTerms && <Text style={styles.checkmark}>✓</Text>}</View>
@@ -255,17 +232,25 @@ const SignupScreen = () => {
               <Text
                 style={styles.termsLink}
                 accessibilityRole="link"
-                onPress={() => openLink(TERMS_URL)}
+                onPress={() => openLegalDocument(navigation, 'terms')}
               >
                 Terms of Service
+              </Text>
+              ,{' '}
+              <Text
+                style={styles.termsLink}
+                accessibilityRole="link"
+                onPress={() => openLegalDocument(navigation, 'privacy')}
+              >
+                Privacy Policy
               </Text>
               {' '}and{' '}
               <Text
                 style={styles.termsLink}
                 accessibilityRole="link"
-                onPress={() => openLink(PRIVACY_URL)}
+                onPress={() => openLegalDocument(navigation, 'community-guidelines')}
               >
-                Privacy Policy
+                Community Guidelines
               </Text>
             </Text>
           </View>

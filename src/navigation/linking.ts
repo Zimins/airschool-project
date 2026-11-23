@@ -1,5 +1,6 @@
 import type { PathConfigMap } from '@react-navigation/native';
 import type { RootStackParamList } from './AppNavigator';
+import type { LegalDocumentSlug } from '../services/LegalDocumentService';
 
 /**
  * URL path for every screen in the root stack.
@@ -17,10 +18,34 @@ export const linkingScreens: PathConfigMap<RootStackParamList> = {
   Admin: 'admin',
   CommunityBoard: 'CommunityBoard',
   StudyBoard: 'StudyBoard',
+  Terms: 'terms',
+  Privacy: 'privacy',
+  CommunityGuidelines: 'community-guidelines',
   FlightSchoolDetail: {
     path: 'school/:schoolId',
     parse: {
       schoolId: (schoolId: string) => schoolId,
     },
   },
+};
+
+/** Root-stack screen that shows each legal document (all use LegalDocumentScreen). */
+export const LEGAL_DOCUMENT_ROUTES = {
+  terms: 'Terms',
+  privacy: 'Privacy',
+  'community-guidelines': 'CommunityGuidelines',
+} as const satisfies Record<LegalDocumentSlug, keyof RootStackParamList>;
+
+export type LegalDocumentRoute = (typeof LEGAL_DOCUMENT_ROUTES)[LegalDocumentSlug];
+
+/**
+ * Public URL of each legal document, for links that open outside the
+ * navigator (a new browser tab from Sign Up, the admin "View Page" button).
+ * These URLs may also be published elsewhere (store listings, emails), so the
+ * paths above must not change.
+ */
+export const LEGAL_DOCUMENT_PATHS: Record<LegalDocumentSlug, string> = {
+  terms: '/terms',
+  privacy: '/privacy',
+  'community-guidelines': '/community-guidelines',
 };

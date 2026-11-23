@@ -6,7 +6,7 @@
  * pasting it into a new tab) silently lands on Home — which is exactly how the
  * Community Board / Study Board links broke.
  */
-import { linkingScreens } from '../../src/navigation/linking';
+import { LEGAL_DOCUMENT_PATHS, LEGAL_DOCUMENT_ROUTES, linkingScreens } from '../../src/navigation/linking';
 
 const ROOT_STACK_ROUTES = [
   'Home',
@@ -17,6 +17,9 @@ const ROOT_STACK_ROUTES = [
   'Admin',
   'CommunityBoard',
   'StudyBoard',
+  'Terms',
+  'Privacy',
+  'CommunityGuidelines',
 ] as const;
 
 describe('web linking config', () => {
@@ -28,6 +31,18 @@ describe('web linking config', () => {
     expect(linkingScreens.CommunityBoard).toBe('CommunityBoard');
     expect(linkingScreens.StudyBoard).toBe('StudyBoard');
     expect(linkingScreens.ForgotPassword).toBe('ForgotPassword');
+  });
+
+  it('serves the legal documents at /terms, /privacy and /community-guidelines', () => {
+    expect(LEGAL_DOCUMENT_PATHS).toEqual({
+      terms: '/terms',
+      privacy: '/privacy',
+      'community-guidelines': '/community-guidelines',
+    });
+    for (const slug of Object.keys(LEGAL_DOCUMENT_PATHS) as (keyof typeof LEGAL_DOCUMENT_PATHS)[]) {
+      const route = LEGAL_DOCUMENT_ROUTES[slug];
+      expect(`/${linkingScreens[route]}`).toBe(LEGAL_DOCUMENT_PATHS[slug]);
+    }
   });
 
   it('parses the school id out of /school/:schoolId', () => {

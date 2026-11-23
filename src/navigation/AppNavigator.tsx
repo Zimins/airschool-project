@@ -8,9 +8,10 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import CommunityBoardScreen from '../screens/CommunityBoardScreen';
 import StudyBoardScreen from '../screens/StudyBoardScreen';
+import LegalDocumentScreen from '../screens/LegalDocumentScreen';
 
 /** Sidebar sections of the admin dashboard. */
-export type AdminMenu = 'dashboard' | 'schools' | 'materials' | 'posts' | 'users';
+export type AdminMenu = 'dashboard' | 'schools' | 'materials' | 'posts' | 'users' | 'legal';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -21,6 +22,9 @@ export type RootStackParamList = {
   Admin: { initialMenu?: AdminMenu } | undefined;
   CommunityBoard: undefined;
   StudyBoard: undefined;
+  Terms: undefined;
+  Privacy: undefined;
+  CommunityGuidelines: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -71,6 +75,21 @@ const AppNavigator = () => {
         name="StudyBoard"
         component={StudyBoardScreen}
         options={{ title: 'Study Board' }}
+      />
+      <Stack.Screen
+        name="Terms"
+        component={LegalDocumentScreen}
+        options={{ title: 'Terms of Service' }}
+      />
+      <Stack.Screen
+        name="Privacy"
+        component={LegalDocumentScreen}
+        options={{ title: 'Privacy Policy' }}
+      />
+      <Stack.Screen
+        name="CommunityGuidelines"
+        component={LegalDocumentScreen}
+        options={{ title: 'Community Guidelines' }}
       />
     </Stack.Navigator>
   );
